@@ -54,7 +54,7 @@ class SearchSpider(scrapy.Spider):
 
         self.logger.info(
             f"尝试请求: {search_api_url} "
-            f"(第 {self.total_attempts+1} 次尝试, 当前域名: {self.current_domain})"
+            f"(第 {self.total_attempts + 1} 次尝试, 当前域名: {self.current_domain})"
         )
         return scrapy.Request(
             url=search_api_url,
@@ -63,16 +63,26 @@ class SearchSpider(scrapy.Spider):
             cookies=cookies,
             meta={"keyword": self.keyword, "domain": self.current_domain},
             errback=self.parse_failure,
+            dont_filter=True,
         )
 
+    def _make_failure(self, response, reason="Unknown"):
+        """构造一个 fake failure 对象"""
+        return type(
+            "FakeFailure", (), {"request": response.request, "value": reason}
+        )()
+
     def parse_failure(self, failure):
-        """请求失败时处理"""
+        """请求失败时处理（包括网络错误和逻辑错误）"""
         self.retry_count += 1
         self.total_attempts += 1
-        current_domain = failure.request.meta.get("domain")
+        current_domain = (
+            failure.request.meta.get("domain") if hasattr(failure, "request") else self.current_domain
+        )
 
         self.logger.error(
-            f"请求失败: {failure.getErrorMessage()}, 域名: {current_domain}, 当前域名重试次数: {self.retry_count}"
+            f"请求失败: {getattr(failure, 'value', failure)}, "
+            f"域名: {current_domain}, 当前域名重试次数: {self.retry_count}"
         )
 
         if self.total_attempts >= config.MAX_TOTAL_ATTEMPTS:
@@ -94,25 +104,36 @@ class SearchSpider(scrapy.Spider):
     def parse_api(self, response):
         """解析 API 返回的 JSON"""
 
-        # 确保输出目录存在
-        os.makedirs(config.OUTPUT_DIRECTORY, exist_ok=True)
+        body = response.text.strip()
+        # 1. 判断特殊空结果
+        if body == "1":
+            self.logger.warning(f"接口返回 1（空结果），域名: {self.current_domain}")
+            yield from self.parse_failure(self._make_failure(response, "Empty search result"))
+            return
+
+        # 2. 尝试解析 JSON
         try:
-            self.logger.info(f"成功解析 API 返回的 JSON: {response.url}")
-            self.logger.info(f"保存数据到 {config.OUTPUT_FILE}")
-
             data = response.json()
-            self.logger.info(f"共抓取了 {len(data)} 条数据")
+        except Exception as e:
+            self.logger.error(f"JSON 解析失败: {e}")
+            yield from self.parse_failure(self._make_failure(response, "Invalid JSON"))
+            return
 
-            # 写入 JSON 文件（格式化）
+        # 3. 判空 JSON
+        if isinstance(data, (list, dict)) and not data:
+            self.logger.warning(f"接口返回空 JSON，域名: {self.current_domain}")
+            yield from self.parse_failure(self._make_failure(response, "Empty JSON"))
+            return
+
+        # 4. 成功时写入
+        try:
+            os.makedirs(config.OUTPUT_DIRECTORY, exist_ok=True)
             with open(config.OUTPUT_FILE, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
 
-        except json.JSONDecodeError as e:
-            self.logger.error(f"JSON 解析失败: {str(e)}")
-            with open(config.ERROR_LOG_FILE, "wb") as f:
-                f.write(response.body)
-            self.logger.info(f"错误响应已保存到 {config.ERROR_LOG_FILE}")
+            self.logger.info(f"成功保存搜索结果到 {config.OUTPUT_FILE}")
+            self.retry_count = 0  # ✅ 重置当前域名重试次数
+
         except Exception as e:
-            self.logger.error(f"处理响应时出错: {str(e)}", exc_info=True)
-            with open(config.ERROR_LOG_FILE, "wb") as f:
-                f.write(response.body)
+            self.logger.error(f"保存 JSON 时出错: {e}", exc_info=True)
+            yield from self.parse_failure(self._make_failure(response, "Save error"))

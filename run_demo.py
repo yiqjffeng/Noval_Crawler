@@ -41,6 +41,7 @@ def main():
     
     # 获取搜索关键词
     keyword = input("请输入要搜索的小说关键词 (默认: 剑来): ").strip()
+    print("关键词:", keyword)
     if not keyword:
         keyword = "剑来"
     
@@ -51,6 +52,7 @@ def main():
     # 运行用户交互界面
     print("\n启动用户交互界面...")
     try:
+        # user_interface.main()
         subprocess.run([sys.executable, "user_interface.py"], cwd=".")
     except Exception as e:
         print(f"启动用户界面时出错: {e}")

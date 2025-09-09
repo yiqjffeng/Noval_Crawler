@@ -66,10 +66,9 @@ class CatalogSpider(scrapy.Spider):
                 
                 if chapter_title and chapter_url:
                     # 构建完整的章节URL
-                    full_chapter_url = urljoin(response.url, chapter_url)
                     chapters.append({
                         'title': chapter_title.strip(),
-                        'url': full_chapter_url
+                        'url': chapter_url.strip(),
                     })
             
             # 过滤掉非章节链接

@@ -17,6 +17,9 @@ SUPPORTED_DOMAINS = [
 # 默认域名
 DEFAULT_DOMAIN = "97c286.cfd"
 
+# 当前域名（会被 spider 动态更新）
+CURRENT_DOMAIN = DEFAULT_DOMAIN
+
 # 请求头配置（基础头，referer/cookie 在 spider 动态生成）
 # 请求头配置
 REQUEST_HEADERS = {
@@ -26,40 +29,37 @@ REQUEST_HEADERS = {
 }
 
 # 默认关键词
-DEFAULT_KEYWORD = "凡人修仙传"
+DEFAULT_KEYWORD = "龙族"
 
-#当前关键词
-CURRENT_KEYWORD = "凡人修仙传"
+KEYWORD = DEFAULT_KEYWORD
 
 # 重试配置
 MAX_RETRY_TIMES = 3           # 每个域名最多重试次数
 MAX_TOTAL_ATTEMPTS = len(SUPPORTED_DOMAINS) * MAX_RETRY_TIMES
 RETRY_DELAY = 3               # 秒
 
-
-################################### 输出配置
-
 # 日志/输出配置
 OUTPUT_DIRECTORY = "output"
+
 ERROR_LOG_FILE = os.path.join(OUTPUT_DIRECTORY,"error_response.json")
+
 OUTPUT_FILE = os.path.join(OUTPUT_DIRECTORY, "search_result.json")
 
 # 目录爬虫配置
 CATALOG_OUTPUT_FILE = os.path.join(OUTPUT_DIRECTORY, "catalog_result.json")
 
 # 内容爬虫配置
-CONTENT_OUTPUT_FILE = os.path.join(OUTPUT_DIRECTORY, f"{DEFAULT_KEYWORD}.txt")
-
-############################## 运行配置
+CONTENT_OUTPUT_TXT_FILE = os.path.join(OUTPUT_DIRECTORY, f"{KEYWORD}.txt")
+CONTENT_OUTPUT_EPUB_FILE = os.path.join(OUTPUT_DIRECTORY, f"{KEYWORD}.epub")
 
 # 并发控制配置
 REQUEST_CONCURRENCY = 3      # 请求并发数（降低以避免反爬虫）
 WRITE_CONCURRENCY = 5        # 写入并发数
+CONCURRENT_REQUESTS_PER_DOMAIN = 3           # 每个域名的并发数
 
 # 反爬虫配置
 DOWNLOAD_DELAY = 2           # 请求间隔（秒）
-RANDOMIZE_DOWNLOAD_DELAY = 0.5  # 随机延迟范围
-REDIRECT_MAX_TIMES = 3       # 最大重定向次数
+RANDOMIZE_DOWNLOAD_DELAY = 1  # 随机延迟范围
 
 # 内容格式配置
 CHAPTER_SEPARATOR = "\n\n\n--------\n\n\n"  # 章节分隔符
@@ -73,5 +73,23 @@ CONTENT_CSS_SELECTORS = {
     'content_alternative': '.ReadAjax_content *::text'     # 第三备用选择器
 }
 
-# 当前域名（会被 spider 动态更新）
-CURRENT_DOMAIN = DEFAULT_DOMAIN
+# 章节过滤配置
+INVALID_CHAPTER_KEYWORDS = [
+    '展开全部章节', '展开', '收起', '---', '<<<', '>>>',
+    '返回目录', '上一页', '下一页', '首页', '尾页','点此报错','加入书签',
+    '收藏本站'
+]
+
+INVALID_CHAPTER_PREFIXES = ['展开', '收起', '<<<', '>>>']
+
+NAVIGATION_KEYWORDS = ['请假条', '单章感言', '作者有话说']
+
+# 目录爬取CSS选择器配置
+CSS_SELECTORS = {
+    'title': 'h1::text',
+    'title_fallback': '.info h1::text',
+    'author_spans': '.small span::text',
+    'chapter_links': '.listmain dl dd a',
+    'chapter_title': '::text',
+    'chapter_url': '::attr(href)'
+}

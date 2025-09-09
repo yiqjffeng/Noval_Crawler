@@ -128,18 +128,18 @@ def run_content_crawler():
             print("内容爬取完成！")
             
             # 检查输出文件
-            if os.path.exists(config.CONTENT_OUTPUT_FILE):
+            if os.path.exists(config.CONTENT_OUTPUT_TXT_FILE):
                 # 获取文件大小
-                file_size = os.path.getsize(config.CONTENT_OUTPUT_FILE)
+                file_size = os.path.getsize(config.CONTENT_OUTPUT_TXT_FILE)
                 file_size_mb = file_size / (1024 * 1024)
                 
                 print(f"\n爬取结果:")
-                print(f"   内容文件: {config.CONTENT_OUTPUT_FILE}")
+                print(f"   内容文件: {config.CONTENT_OUTPUT_TXT_FILE}")
                 print(f"   文件大小: {file_size_mb:.2f} MB")
                 
                 # 读取文件前几行显示预览
                 try:
-                    with open(config.CONTENT_OUTPUT_FILE, 'r', encoding='utf-8') as f:
+                    with open(config.CONTENT_OUTPUT_TXT_FILE, 'r', encoding='utf-8') as f:
                         lines = f.readlines()
                         print(f"   总行数: {len(lines)}")
                         

@@ -7,6 +7,14 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
+from book_crawler.config import (
+    REQUEST_CONCURRENCY,
+    CONCURRENT_REQUESTS_PER_DOMAIN,
+    DOWNLOAD_DELAY,
+    RANDOMIZE_DOWNLOAD_DELAY,
+    WRITE_CONCURRENCY
+)
+
 BOT_NAME = "book_crawler"
 
 SPIDER_MODULES = ["book_crawler.spiders"]
@@ -22,10 +30,11 @@ ADDONS = {}
 ROBOTSTXT_OBEY = False  # 小说网站通常不需要遵守robots.txt
 
 # Concurrency and throttling settings
-CONCURRENT_REQUESTS = 8
-CONCURRENT_REQUESTS_PER_DOMAIN = 2
-DOWNLOAD_DELAY = 2
-RANDOMIZE_DOWNLOAD_DELAY = 0.5
+CONCURRENT_REQUESTS = REQUEST_CONCURRENCY
+CONCURRENT_REQUESTS_PER_DOMAIN = CONCURRENT_REQUESTS_PER_DOMAIN
+DOWNLOAD_DELAY = DOWNLOAD_DELAY
+RANDOMIZE_DOWNLOAD_DELAY = RANDOMIZE_DOWNLOAD_DELAY
+WRITE_CONCURRENCY = WRITE_CONCURRENCY        # 写入并发数
 
 # Disable cookies (enabled by default)
 #COOKIES_ENABLED = False
@@ -62,6 +71,7 @@ DEFAULT_REQUEST_HEADERS = {
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
+    "book_crawler.pipelines.TxtWriterPipeline": 300,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
