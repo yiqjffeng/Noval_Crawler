@@ -12,7 +12,8 @@ from book_crawler.config import (
     CONCURRENT_REQUESTS_PER_DOMAIN,
     DOWNLOAD_DELAY,
     RANDOMIZE_DOWNLOAD_DELAY,
-    WRITE_CONCURRENCY
+    WRITE_CONCURRENCY,
+    REQUEST_HEADERS,
 )
 
 BOT_NAME = "book_crawler"
@@ -43,12 +44,7 @@ WRITE_CONCURRENCY = WRITE_CONCURRENCY        # 写入并发数
 #TELNETCONSOLE_ENABLED = False
 
 # Override the default request headers:
-DEFAULT_REQUEST_HEADERS = {
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-    "Accept-Encoding": "gzip, deflate, br",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
-}
+DEFAULT_REQUEST_HEADERS = REQUEST_HEADERS
 
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html

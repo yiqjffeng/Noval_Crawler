@@ -1,6 +1,5 @@
 import json
 import os
-import random
 from urllib.parse import quote
 import scrapy
 
@@ -27,30 +26,18 @@ class SearchSpider(scrapy.Spider):
 
         self.logger.info(f"初始化爬虫，搜索关键词: {self.keyword}, 使用域名: {self.current_domain}")
 
-    def __get_cookie(self):
-        """模拟 GetCookies.js """
-        # domains = [
-        #     "750f287d3.cfd", "b9afb.lol", "dceba62fe.sbs",
-        #     "0d6f590b.sbs", "099990886b.cfd"
-        # ]
-        return {
-            # "getsite": random.choice(domains),
-            "hm": "3591fbe5eb25068174dcd6e2df840b6c",
-            # "hmt": "1757069195",
-        }
-
     def start_requests(self):
         yield self.make_request()
 
     def make_request(self):
         """构造请求"""
         encoded_keyword = quote(self.keyword)
-        search_api_url = f"https://www.{self.current_domain}/user/search.html?q={encoded_keyword}&so=undefined"
+        search_api_url = f"https://www.{self.current_domain}/user/search.html?q={encoded_keyword}"
 
         headers = config.REQUEST_HEADERS.copy()
         headers["referer"] = f"https://www.{self.current_domain}/s?q={encoded_keyword}"
-
-        cookies = self.__get_cookie()
+        from book_crawler.tools import get_cookies
+        cookies = get_cookies()
 
         self.logger.info(
             f"尝试请求: {search_api_url} "
