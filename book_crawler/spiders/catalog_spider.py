@@ -13,10 +13,12 @@ class CatalogSpider(scrapy.Spider):
     handle_httpstatus_list: list[int] = [302]  # 处理重定向状态码
     novel_url: Optional[str]
 
-    def __init__(self, novel_url: Optional[str] = None, **kwargs: Any):
+    def __init__(self, novel_url: Optional[str] = None, keyword : Optional[str] = config.KEYWORD, **kwargs: Any):
         super().__init__(**kwargs)
         self.novel_url = novel_url
+        self.keyword = keyword
         self.logger.info(f"初始化目录爬虫，小说URL: {self.novel_url}")
+
 
     def start_requests(self):
         """开始请求，使用传入的URL"""
@@ -111,11 +113,12 @@ class CatalogSpider(scrapy.Spider):
             os.makedirs(config.OUTPUT_DIRECTORY, exist_ok=True)
             
             # 使用配置中的输出文件路径
-            self.logger.info(f"保存数据到 {config.CATALOG_OUTPUT_FILE}")
-            with open(config.CATALOG_OUTPUT_FILE, "w", encoding="utf-8") as f:
+            catalog_output_file = config.get_catalog_output_file(self.keyword)
+            self.logger.info(f"保存数据到 {catalog_output_file}")
+            with open(catalog_output_file, "w", encoding="utf-8") as f:
                 json.dump(output_data, f, ensure_ascii=False, indent=4)
             
-            self.logger.info(f"章节信息已保存到: {config.CATALOG_OUTPUT_FILE}")
+            self.logger.info(f"章节信息已保存到: {catalog_output_file}")
             
             yield chapter_item
             

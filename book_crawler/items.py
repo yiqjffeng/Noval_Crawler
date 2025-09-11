@@ -32,6 +32,7 @@ class ChapterItem(scrapy.Item):
 
 
 class ContentItem(scrapy.Item):
+    book_name = scrapy.Field() # 小说名称
     novel_id = scrapy.Field()  # 小说ID
     novel_title = scrapy.Field()  # 小说标题
     chapter_title = scrapy.Field()  # 章节标题

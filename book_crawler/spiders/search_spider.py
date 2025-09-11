@@ -115,10 +115,11 @@ class SearchSpider(scrapy.Spider):
         # 4. 成功时写入
         try:
             os.makedirs(config.OUTPUT_DIRECTORY, exist_ok=True)
-            with open(config.OUTPUT_FILE, "w", encoding="utf-8") as f:
+            search_output_file = config.get_search_output_file(self.keyword)
+            with open(search_output_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
 
-            self.logger.info(f"成功保存搜索结果到 {config.OUTPUT_FILE}")
+            self.logger.info(f"成功保存搜索结果到 {search_output_file}")
             self.retry_count = 0  # ✅ 重置当前域名重试次数
 
         except Exception as e:

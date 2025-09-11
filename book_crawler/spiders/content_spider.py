@@ -7,10 +7,11 @@ import scrapy
 
 from ..config import (
     SUPPORTED_DOMAINS,
-    CATALOG_OUTPUT_FILE,
     PARAGRAPH_INDENT,
     INVALID_CHAPTER_KEYWORDS,
     REQUEST_HEADERS,
+    OUTPUT_DIRECTORY,
+    get_catalog_output_file,
 )
 from ..items import ContentItem
 
@@ -35,29 +36,32 @@ class ContentSpider(scrapy.Spider):
     name = "content"
     allowed_domains = SUPPORTED_DOMAINS.copy()
 
-    def __init__(self, start_idx=1, end_idx=-1, task_id=None, **kwargs):
+    def __init__(self, start_idx=0, end_idx=-1, task_id=None, book_name: str = None, **kwargs):
         super().__init__(**kwargs)
         self.failed_chapters = []
         self.catalog = {}
+        self.keyword = book_name
         self.start_idx = (int(start_idx) if start_idx else 1) - 1
         self.end_idx = int(end_idx) if end_idx and end_idx != '-1' else -1
         self.task_id = task_id or "default"
         self.total_chapters = 0
         self.downloaded_chapters = 0
-        
-        # 进度文件路径
-        self.progress_file = f"output/progress_{self.task_id}.json"
 
-        if os.path.exists(CATALOG_OUTPUT_FILE):
+        # 进度文件路径
+        self.progress_file = f"{OUTPUT_DIRECTORY}/progress_{self.task_id}.json"
+
+        catalog_output_file = get_catalog_output_file(self.keyword)
+
+        if os.path.exists(catalog_output_file):
             try:
-                with open(CATALOG_OUTPUT_FILE, "r", encoding="utf-8") as f:
+                with open(catalog_output_file, "r", encoding="utf-8") as f:
                     self.catalog = json.load(f)
             except JSONDecodeError as e:
                 self.logger.error(f"catalog读取时出错，该文件不是json文件: {str(e)}")
         else:
-            self.logger.error(f"未找到目录文件: {CATALOG_OUTPUT_FILE}")
+            self.logger.error(f"未找到目录文件: {catalog_output_file}")
             self.logger.error("请先运行目录爬虫")
-            
+
         # 创建进度文件
         self._update_progress(0, 0, "starting")
 
@@ -66,17 +70,17 @@ class ContentSpider(scrapy.Spider):
             return
 
         chapters = self.catalog.get("chapters", [])
-        
+
         # 计算实际的章节范围
         start = max(0, self.start_idx - 1)  # 转换为0-based索引
         end = len(chapters) if self.end_idx == -1 else min(self.end_idx, len(chapters))
-        
+
         target_chapters = chapters[start:end]
         self.total_chapters = len(target_chapters)
-        
+
         # 更新进度
         self._update_progress(0, self.total_chapters, "downloading")
-        
+
         for idx, chapter in enumerate(target_chapters):
             url_path = chapter.get("url", "")
             if not url_path.startswith("/book/"):
@@ -107,6 +111,7 @@ class ContentSpider(scrapy.Spider):
         )
         item["detail_url"] = response.url
         item["domain"] = response.url.split("/")[2]
+        item['book_name'] = self.keyword
 
         # 提取正文
         raw_texts = response.xpath('//*[@id="chaptercontent"]//text()').getall()
@@ -121,8 +126,8 @@ class ContentSpider(scrapy.Spider):
         # 更新进度
         self.downloaded_chapters += 1
         self._update_progress(
-            self.downloaded_chapters, 
-            self.total_chapters, 
+            self.downloaded_chapters,
+            self.total_chapters,
             "downloading"
         )
 

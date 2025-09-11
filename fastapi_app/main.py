@@ -3,26 +3,64 @@ from pydantic import BaseModel
 import subprocess
 import json
 import os
-import asyncio
 import uuid
+import signal
+import atexit
+import glob
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from config import (
-    SEARCH_OUTPUT_FILE,
-    CATALOG_OUTPUT_FILE,
     OUTPUT_DIRECTORY,
     get_content_txt_filename,
     get_content_epub_filename,
-    get_progress_filename,
 )
+from book_crawler.config import get_catalog_output_file,get_search_output_file
+
 
 app = FastAPI(title="小说爬虫API", description="基于Scrapy的小说爬虫FastAPI接口")
+app.state.current_book_name = None
 
 # 任务管理
 executor = ThreadPoolExecutor(max_workers=3)
 tasks = {}  # 存储任务状态
+
+# 清理函数
+def cleanup_on_exit():
+    """程序退出时清理临时文件"""
+    try:
+        # 清理output目录下的临时文件（保留.txt, .epub, .log文件）
+        temp_patterns = [
+            "*.json",      # 搜索结果和目录缓存
+            "progress_*",  # 进度文件
+            "*.tmp",       # 临时文件
+            "*.cache"      # 缓存文件
+        ]
+        
+        for pattern in temp_patterns:
+            for file_path in glob.glob(os.path.join(OUTPUT_DIRECTORY, pattern)):
+                try:
+                    os.remove(file_path)
+                    print(f"已清理临时文件: {file_path}")
+                except Exception as e:
+                    print(f"清理文件失败 {file_path}: {e}")
+    except Exception as e:
+        print(f"清理过程出错: {e}")
+
+# 注册清理函数
+atexit.register(cleanup_on_exit)
+
+# 处理信号
+def signal_handler(signum, frame):
+    """处理中断信号"""
+    print(f"接收到信号 {signum}，开始清理...")
+    cleanup_on_exit()
+    exit(0)
+
+# 注册信号处理器
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
 
 
 class SearchRequest(BaseModel):
@@ -110,7 +148,8 @@ def run_download_task(task_id: str, novel_url: str, book_name: str, start_chapte
         args = [
             "-a", f"start_idx={start_chapter}",
             "-a", f"end_idx={end_chapter}",
-            "-a", f"task_id={task_id}"
+            "-a", f"task_id={task_id}",
+            "-a", f'book_name={book_name}'
         ]
 
         result = run_scrapy_spider("content", args)
@@ -143,15 +182,15 @@ async def novel_search(
         if not search_keyword:
             raise HTTPException(status_code=400, detail="必须提供搜索关键词")
 
-        # 确保输出目录存在
-        os.makedirs(OUTPUT_DIRECTORY, exist_ok=True)
+        app.state.current_book_name = search_keyword
 
         # 执行Scrapy搜索爬虫
         result = run_scrapy_spider("search", ["-a", f"keyword={search_keyword}"])
 
         # 读取搜索结果
-        if os.path.exists(SEARCH_OUTPUT_FILE):
-            with open(SEARCH_OUTPUT_FILE, "r", encoding="utf-8") as f:
+        search_output_file = get_search_output_file(search_keyword)
+        if os.path.exists(search_output_file):
+            with open(search_output_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
             return {"status": "success", "data": data, "message": "搜索完成", "keyword": search_keyword}
         else:
@@ -178,15 +217,14 @@ async def novel_catalog(
     try:
         # 优先使用JSON请求体，其次使用query参数
         novel_id_value = request.novel_id if request and request.novel_id else novel_id
-        
+        novel_id_value -= 1
         if novel_id_value is None:
             raise HTTPException(status_code=400, detail="必须提供小说ID")
 
-        # 确保输出目录存在
-        os.makedirs(OUTPUT_DIRECTORY, exist_ok=True)
+
         
         # 从搜索结果中获取对应小说的URL
-        search_file = SEARCH_OUTPUT_FILE
+        search_file = get_search_output_file(app.state.current_book_name)
         if not os.path.exists(search_file):
             raise HTTPException(status_code=404, detail="搜索结果文件不存在，请先执行搜索")
             
@@ -198,13 +236,14 @@ async def novel_catalog(
             
         novel_info = search_results[novel_id_value]
         novel_url = novel_info["url_list"]
-        book_name = novel_info.get("title", "未知书名")
+        book_name = novel_info.get("articlename", "未知书名")
+        app.state.current_book_name = book_name
         
         # 执行Scrapy目录爬虫
-        result = run_scrapy_spider("catalog", ["-a", f"novel_url={novel_url}"])
+        result = run_scrapy_spider("catalog", ["-a", f"novel_url={novel_url}", "-a", f"keyword={book_name}"])
 
         # 读取目录结果
-        catalog_file = CATALOG_OUTPUT_FILE
+        catalog_file = get_catalog_output_file(app.state.current_book_name)
         if os.path.exists(catalog_file):
             with open(catalog_file, "r", encoding="utf-8") as f:
                 catalog_data = json.load(f)
@@ -346,6 +385,7 @@ async def download_status(task_id: str):
         response_data = {
             "task_id": task_id,
             "status": tasks[task_id]["status"],
+            "book_name": tasks[task_id]["book_name"],
             "novel_url": tasks[task_id]["novel_url"],
             "start_chapter": tasks[task_id]["start_chapter"],
             "end_chapter": tasks[task_id]["end_chapter"]
@@ -406,6 +446,7 @@ async def get_tasks():
             task_list.append({
                 "task_id": task_id,
                 "status": task_info["status"],
+                "book_name": task_info["book_name"],
                 "novel_url": task_info["novel_url"],
                 "start_chapter": task_info["start_chapter"],
                 "end_chapter": task_info["end_chapter"],

@@ -16,14 +16,13 @@ os.makedirs(OUTPUT_DIRECTORY, exist_ok=True)
 
 # ==================== 文件输出路径配置 ====================
 
-# 搜索输出文件
-SEARCH_OUTPUT_FILE = os.path.join(OUTPUT_DIRECTORY, "search_result.json")
+# 日志目录
+LOG_DIRECTORY = os.path.join(OUTPUT_DIRECTORY, 'log')
+os.makedirs(LOG_DIRECTORY, exist_ok=True)
 
 # 错误日志文件
-ERROR_LOG_FILE = os.path.join(OUTPUT_DIRECTORY, f"{time.time()}.log")
+ERROR_LOG_FILE = os.path.join(LOG_DIRECTORY, f"{time.time()}.log")
 
-# 目录输出文件
-CATALOG_OUTPUT_FILE = os.path.join(OUTPUT_DIRECTORY, "catalog_result.json")
 
 # 内容输出文件（动态生成）
 def get_content_txt_filename(keyword='剑来'):
@@ -53,28 +52,3 @@ CONCURRENT_REQUESTS_PER_DOMAIN = 3           # 每个域名的并发数
 # 反爬虫配置
 DOWNLOAD_DELAY = 2           # 请求间隔（秒）
 RANDOMIZE_DOWNLOAD_DELAY = 1  # 随机延迟范围
-
-# ==================== 验证配置 ====================
-def validate_config():
-    """验证并创建必要的目录"""
-    print("🔍 验证基础配置...")
-    
-    # 检查并创建输出目录
-    if not os.path.exists(OUTPUT_DIRECTORY):
-        os.makedirs(OUTPUT_DIRECTORY)
-        print(f"✅ 创建输出目录: {OUTPUT_DIRECTORY}")
-    
-    # 检查文件路径
-    paths_to_check = [
-        SEARCH_OUTPUT_FILE,
-        ERROR_LOG_FILE,
-        CATALOG_OUTPUT_FILE
-    ]
-    
-    for path in paths_to_check:
-        dir_path = os.path.dirname(path)
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
-            print(f"✅ 创建目录: {dir_path}")
-    
-    print("✅ 基础配置验证完成")

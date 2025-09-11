@@ -2,12 +2,11 @@
 """
 配置文件，存储爬虫需要的各种配置参数
 """
+import datetime
+import os
 from random import choice
 from config import (
-    SEARCH_OUTPUT_FILE,
-    ERROR_LOG_FILE,
     OUTPUT_DIRECTORY,
-    CATALOG_OUTPUT_FILE,
     REQUEST_CONCURRENCY,
     WRITE_CONCURRENCY,
     CONCURRENT_REQUESTS_PER_DOMAIN,
@@ -56,15 +55,26 @@ MAX_RETRY_TIMES = 3  # 每个域名最多重试次数
 MAX_TOTAL_ATTEMPTS = len(SUPPORTED_DOMAINS) * MAX_RETRY_TIMES
 RETRY_DELAY = 3  # 秒
 
-# 日志/输出配置
-OUTPUT_DIRECTORY = OUTPUT_DIRECTORY
+# 日志/输出配置 - 确保使用项目根目录的output
+OUTPUT_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'output')
 
-ERROR_LOG_FILE = ERROR_LOG_FILE
+# 日志目录
+LOG_DIRECTORY = os.path.join(OUTPUT_DIRECTORY, 'log')
+os.makedirs(LOG_DIRECTORY, exist_ok=True)
 
-OUTPUT_FILE = SEARCH_OUTPUT_FILE
+ERROR_LOG_FILE = os.path.join(LOG_DIRECTORY, f"{datetime.datetime.now()}.log")
+
+# 搜索结果输出文件
+def get_search_output_file(keyword=None):
+    """根据当前关键词动态生成输出文件路径"""
+    key = keyword or KEYWORD
+    return os.path.join(OUTPUT_DIRECTORY, f"search_{key}_result.json")
 
 # 目录爬虫配置
-CATALOG_OUTPUT_FILE = CATALOG_OUTPUT_FILE
+def get_catalog_output_file(keyword=None):
+    """根据当前关键词动态生成输出文件路径"""
+    key = keyword or KEYWORD
+    return os.path.join(OUTPUT_DIRECTORY, f"catalog_{key}_result.json")
 
 # 并发控制配置
 REQUEST_CONCURRENCY = REQUEST_CONCURRENCY# 请求并发数（降低以避免反爬虫）

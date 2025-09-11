@@ -70,6 +70,11 @@ ITEM_PIPELINES = {
     "book_crawler.pipelines.TxtWriterPipeline": 300,
 }
 
+# 启用pipeline选择中间件
+EXTENSIONS = {
+    "book_crawler.middlewares.PipelineSelectorMiddleware": 500,
+}
+
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
 #AUTOTHROTTLE_ENABLED = True
