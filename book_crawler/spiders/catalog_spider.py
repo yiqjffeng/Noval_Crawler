@@ -109,9 +109,6 @@ class CatalogSpider(scrapy.Spider):
                 'chapters': filtered_chapters
             }
             
-            # 确保输出目录存在
-            os.makedirs(config.OUTPUT_DIRECTORY, exist_ok=True)
-            
             # 使用配置中的输出文件路径
             catalog_output_file = config.get_catalog_output_file(self.keyword)
             self.logger.info(f"保存数据到 {catalog_output_file}")

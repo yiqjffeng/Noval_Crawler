@@ -36,11 +36,12 @@ class ContentSpider(scrapy.Spider):
     name = "content"
     allowed_domains = SUPPORTED_DOMAINS.copy()
 
-    def __init__(self, start_idx=0, end_idx=-1, task_id=None, book_name: str = None, **kwargs):
+    def __init__(self, start_idx=0, end_idx=-1, task_id=None, keyword : str = None, book_name: str = None, **kwargs):
         super().__init__(**kwargs)
         self.failed_chapters = []
         self.catalog = {}
-        self.keyword = book_name
+        self.keyword = keyword
+        self.book_name = book_name or keyword
         self.start_idx = (int(start_idx) if start_idx else 1) - 1
         self.end_idx = int(end_idx) if end_idx and end_idx != '-1' else -1
         self.task_id = task_id or "default"
@@ -111,7 +112,7 @@ class ContentSpider(scrapy.Spider):
         )
         item["detail_url"] = response.url
         item["domain"] = response.url.split("/")[2]
-        item['book_name'] = self.keyword
+        item['book_name'] = self.book_name
 
         # 提取正文
         raw_texts = response.xpath('//*[@id="chaptercontent"]//text()').getall()
@@ -143,7 +144,8 @@ class ContentSpider(scrapy.Spider):
     def _update_progress(self, current, total, status):
         """更新进度到文件"""
         try:
-            os.makedirs("output", exist_ok=True)
+            # 移除自动创建output目录逻辑
+            # os.makedirs("output", exist_ok=True)
             progress_data = {
                 "task_id": self.task_id,
                 "current": current,

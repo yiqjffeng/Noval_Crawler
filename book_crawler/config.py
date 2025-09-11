@@ -60,7 +60,8 @@ OUTPUT_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 # 日志目录
 LOG_DIRECTORY = os.path.join(OUTPUT_DIRECTORY, 'log')
-os.makedirs(LOG_DIRECTORY, exist_ok=True)
+# 移除目录创建逻辑，避免自动创建output文件夹
+# os.makedirs(LOG_DIRECTORY, exist_ok=True)
 
 ERROR_LOG_FILE = os.path.join(LOG_DIRECTORY, f"{datetime.datetime.now()}.log")
 

@@ -133,7 +133,7 @@ def run_scrapy_spider(spider_name: str, args: List[str] = []) -> Dict[str, Any]:
         raise Exception(f"执行爬虫时出错: {str(e)}")
 
 
-def run_download_task(task_id: str, novel_url: str, book_name: str, start_chapter: int, end_chapter: int, mode: str, output_path: str):
+def run_download_task(task_id: str, novel_url: str, keyword : str, book_name: str, start_chapter: int, end_chapter: int, mode: str, output_path: str):
     """
     运行下载任务
     """
@@ -141,15 +141,17 @@ def run_download_task(task_id: str, novel_url: str, book_name: str, start_chapte
         tasks[task_id]["status"] = "running"
         tasks[task_id]["message"] = "正在获取目录..."
 
-        # 先获取目录
-        catalog_result = run_scrapy_spider("catalog", ["-a", f"novel_url={novel_url}"])
+        # 先获取目录 - 使用原始keyword避免创建新的搜索结果
+        catalog_result = run_scrapy_spider("catalog", ["-a", f"novel_url={novel_url}", "-a", f"keyword={keyword}"])
 
         # 运行内容爬虫
         args = [
             "-a", f"start_idx={start_chapter}",
             "-a", f"end_idx={end_chapter}",
             "-a", f"task_id={task_id}",
-            "-a", f'book_name={book_name}'
+            "-a", f'book_name={book_name}',
+            '-a', f'mode={mode}',
+            '-a',f'keyword={keyword}'
         ]
 
         result = run_scrapy_spider("content", args)
@@ -308,7 +310,7 @@ async def start_download(
         task_id = str(uuid.uuid4())
 
         # 根据模式选择输出文件路径
-        if download_data.mode == "txt":
+        if download_data.mode == DownloadMode.txt:
             path = get_content_txt_filename(download_data.book_name)
         else:
             path = get_content_epub_filename(download_data.book_name)
@@ -332,13 +334,14 @@ async def start_download(
         # 启动下载任务
         executor.submit(
             run_download_task,
-            task_id,
-            download_data.novel_url,
-            download_data.book_name,
-            download_data.start_chapter,
-            download_data.end_chapter,
-            download_data.mode,
-            path,
+            task_id=task_id,
+            novel_url=download_data.novel_url,
+            keyword=app.state.current_book_name,
+            book_name=download_data.book_name,
+            start_chapter=download_data.start_chapter,
+            end_chapter=download_data.end_chapter,
+            mode=download_data.mode,
+            output_path=path,
         )
 
         return {

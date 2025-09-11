@@ -1,5 +1,4 @@
 import json
-import os
 from urllib.parse import quote
 import scrapy
 
@@ -114,7 +113,6 @@ class SearchSpider(scrapy.Spider):
 
         # 4. 成功时写入
         try:
-            os.makedirs(config.OUTPUT_DIRECTORY, exist_ok=True)
             search_output_file = config.get_search_output_file(self.keyword)
             with open(search_output_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)

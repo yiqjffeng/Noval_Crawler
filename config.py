@@ -11,27 +11,27 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 # ==================== 输出目录配置 ====================
 OUTPUT_DIRECTORY = os.path.join(PROJECT_ROOT ,'output')
 
-# 确保输出目录存在
-os.makedirs(OUTPUT_DIRECTORY, exist_ok=True)
+# 移除自动创建output目录逻辑
+# os.makedirs(OUTPUT_DIRECTORY, exist_ok=True)
 
 # ==================== 文件输出路径配置 ====================
 
 # 日志目录
-LOG_DIRECTORY = os.path.join(OUTPUT_DIRECTORY, 'log')
-os.makedirs(LOG_DIRECTORY, exist_ok=True)
+# LOG_DIRECTORY = os.path.join(OUTPUT_DIRECTORY, 'log')
+# # os.makedirs(LOG_DIRECTORY, exist_ok=True)
 
 # 错误日志文件
-ERROR_LOG_FILE = os.path.join(LOG_DIRECTORY, f"{time.time()}.log")
+ERROR_LOG_FILE = os.path.join(OUTPUT_DIRECTORY, f"{time.time()}.log")
 
 
 # 内容输出文件（动态生成）
-def get_content_txt_filename(keyword='剑来'):
+def get_content_txt_filename(book_name='剑来'):
     """获取TXT格式的小说文件名"""
-    return os.path.join(OUTPUT_DIRECTORY, f"{keyword}.txt")
+    return os.path.join(OUTPUT_DIRECTORY, f"{book_name}.txt")
 
-def get_content_epub_filename(keyword='剑来'):
+def get_content_epub_filename(book_name='剑来'):
     """获取EPUB格式的小说文件名"""
-    return os.path.join(OUTPUT_DIRECTORY, f"{keyword}.epub")
+    return os.path.join(OUTPUT_DIRECTORY, f"{book_name}.epub")
 
 # 进度文件模板
 def get_progress_filename(task_id):
