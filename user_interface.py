@@ -6,21 +6,20 @@
 import json
 import os
 import subprocess
-import sys
 
 # 导入配置
-import book_crawler.config as config
+import config as config
 
 
 def load_search_results():
     """加载搜索结果"""
-    if not os.path.exists(config.OUTPUT_FILE):
-        print(f"搜索结果文件不存在: {config.OUTPUT_FILE}")
+    if not os.path.exists(config.SEARCH_OUTPUT_FILE):
+        print(f"搜索结果文件不存在: {config.SEARCH_OUTPUT_FILE}")
         print("请先运行搜索爬虫: scrapy crawl search -a keyword=你的关键词")
         return None
     
     try:
-        with open(config.OUTPUT_FILE, 'r', encoding='utf-8') as f:
+        with open(config.SEARCH_OUTPUT_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
         print(f"读取搜索结果失败: {e}")
@@ -121,25 +120,25 @@ def run_content_crawler():
     
     try:
         # 运行content爬虫
-        cmd = ["scrapy", "crawl", "content"]
+        cmd = ["scrapy", "crawl", "content", "-a","start_idx=1","-a","end_idx=5"]
         result = subprocess.run(cmd, capture_output=True, text=True, cwd=".")
         
         if result.returncode == 0:
             print("内容爬取完成！")
             
             # 检查输出文件
-            if os.path.exists(config.CONTENT_OUTPUT_TXT_FILE):
+            if os.path.exists(config.get_content_txt_filename()):
                 # 获取文件大小
-                file_size = os.path.getsize(config.CONTENT_OUTPUT_TXT_FILE)
+                file_size = os.path.getsize(config.get_content_txt_filename())
                 file_size_mb = file_size / (1024 * 1024)
                 
                 print(f"\n爬取结果:")
-                print(f"   内容文件: {config.CONTENT_OUTPUT_TXT_FILE}")
+                print(f"   内容文件: {config.get_content_txt_filename()}")
                 print(f"   文件大小: {file_size_mb:.2f} MB")
                 
                 # 读取文件前几行显示预览
                 try:
-                    with open(config.CONTENT_OUTPUT_TXT_FILE, 'r', encoding='utf-8') as f:
+                    with open(config.get_content_txt_filename(), 'r', encoding='utf-8') as f:
                         lines = f.readlines()
                         print(f"   总行数: {len(lines)}")
                         
@@ -197,4 +196,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    run_content_crawler()

@@ -14,14 +14,15 @@ class BookCrawlerPipeline:
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from scrapy.utils.project import get_project_settings
-from book_crawler.config import CONTENT_OUTPUT_TXT_FILE
+from config import get_content_txt_filename
+from book_crawler.config import KEYWORD
 
 class TxtWriterPipeline:
     def open_spider(self, spider):
         settings = get_project_settings()
         self.executor = ThreadPoolExecutor(max_workers=settings.getint("WRITE_CONCURRENCY"))
         self.tasks = []
-        self.output_file = open(CONTENT_OUTPUT_TXT_FILE, "a", encoding="utf-8")
+        self.output_file = open(get_content_txt_filename(KEYWORD), "w", encoding="utf-8")
 
     def process_item(self, item, spider):
         spider.logger.info(f"写入章节: {item['chapter_title']} 内容长度={len(item.get('content', ''))}")

@@ -1,7 +1,6 @@
 import scrapy
 import json
 import os
-from urllib.parse import urljoin
 from typing import Any, Optional
 
 import book_crawler.config as config

@@ -2,8 +2,18 @@
 """
 配置文件，存储爬虫需要的各种配置参数
 """
-import os
 from random import choice
+from config import (
+    SEARCH_OUTPUT_FILE,
+    ERROR_LOG_FILE,
+    OUTPUT_DIRECTORY,
+    CATALOG_OUTPUT_FILE,
+    REQUEST_CONCURRENCY,
+    WRITE_CONCURRENCY,
+    CONCURRENT_REQUESTS_PER_DOMAIN,
+    DOWNLOAD_DELAY,
+    RANDOMIZE_DOWNLOAD_DELAY
+)
 
 # 支持的域名列表
 SUPPORTED_DOMAINS = [
@@ -36,56 +46,51 @@ REQUEST_HEADERS = {
     "user-agent": choice(USER_AGENT),
 }
 
-
 # 默认关键词
 DEFAULT_KEYWORD = "剑来"
 
 KEYWORD = DEFAULT_KEYWORD
 
 # 重试配置
-MAX_RETRY_TIMES = 3           # 每个域名最多重试次数
+MAX_RETRY_TIMES = 3  # 每个域名最多重试次数
 MAX_TOTAL_ATTEMPTS = len(SUPPORTED_DOMAINS) * MAX_RETRY_TIMES
-RETRY_DELAY = 3               # 秒
+RETRY_DELAY = 3  # 秒
 
 # 日志/输出配置
-OUTPUT_DIRECTORY = "output"
+OUTPUT_DIRECTORY = OUTPUT_DIRECTORY
 
-ERROR_LOG_FILE = os.path.join(OUTPUT_DIRECTORY,"error_response.json")
+ERROR_LOG_FILE = ERROR_LOG_FILE
 
-OUTPUT_FILE = os.path.join(OUTPUT_DIRECTORY, "search_result.json")
+OUTPUT_FILE = SEARCH_OUTPUT_FILE
 
 # 目录爬虫配置
-CATALOG_OUTPUT_FILE = os.path.join(OUTPUT_DIRECTORY, "catalog_result.json")
-
-# 内容爬虫配置
-CONTENT_OUTPUT_TXT_FILE = os.path.join(OUTPUT_DIRECTORY, f"{KEYWORD}.txt")
-CONTENT_OUTPUT_EPUB_FILE = os.path.join(OUTPUT_DIRECTORY, f"{KEYWORD}.epub")
+CATALOG_OUTPUT_FILE = CATALOG_OUTPUT_FILE
 
 # 并发控制配置
-REQUEST_CONCURRENCY = 3      # 请求并发数（降低以避免反爬虫）
-WRITE_CONCURRENCY = 5        # 写入并发数
-CONCURRENT_REQUESTS_PER_DOMAIN = 3           # 每个域名的并发数
+REQUEST_CONCURRENCY = REQUEST_CONCURRENCY# 请求并发数（降低以避免反爬虫）
+WRITE_CONCURRENCY = WRITE_CONCURRENCY  # 写入并发数
+CONCURRENT_REQUESTS_PER_DOMAIN = CONCURRENT_REQUESTS_PER_DOMAIN  # 每个域名的并发数
 
 # 反爬虫配置
-DOWNLOAD_DELAY = 2           # 请求间隔（秒）
-RANDOMIZE_DOWNLOAD_DELAY = 1  # 随机延迟范围
+DOWNLOAD_DELAY = DOWNLOAD_DELAY  # 请求间隔（秒）
+RANDOMIZE_DOWNLOAD_DELAY = RANDOMIZE_DOWNLOAD_DELAY  # 随机延迟范围
 
 # 内容格式配置
 CHAPTER_SEPARATOR = "\n\n\n--------\n\n\n"  # 章节分隔符
-PARAGRAPH_INDENT = "　　"                    # 段首缩进
+PARAGRAPH_INDENT = "　　"  # 段首缩进
 
 # 内容页面CSS选择器
 CONTENT_CSS_SELECTORS = {
-    'title': 'h1::text',                                    # 章节标题选择器
-    'content': '#chaptercontent *::text',                   # 章节内容选择器（包含所有子元素）
-    'content_fallback': '.Readarea *::text',               # 内容备用选择器
-    'content_alternative': '.ReadAjax_content *::text'     # 第三备用选择器
+    'title': 'h1::text',  # 章节标题选择器
+    'content': '#chaptercontent *::text',  # 章节内容选择器（包含所有子元素）
+    'content_fallback': '.Readarea *::text',  # 内容备用选择器
+    'content_alternative': '.ReadAjax_content *::text'  # 第三备用选择器
 }
 
 # 章节过滤配置
 INVALID_CHAPTER_KEYWORDS = [
     '展开全部章节', '展开', '收起', '---', '<<<', '>>>',
-    '返回目录', '上一页', '下一页', '首页', '尾页','点此报错','加入书签',
+    '返回目录', '上一页', '下一页', '首页', '尾页', '点此报错', '加入书签',
     '收藏本站'
 ]
 

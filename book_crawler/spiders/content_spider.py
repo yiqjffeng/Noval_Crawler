@@ -35,10 +35,18 @@ class ContentSpider(scrapy.Spider):
     name = "content"
     allowed_domains = SUPPORTED_DOMAINS.copy()
 
-    def __init__(self, **kwargs):
+    def __init__(self, start_idx=1, end_idx=-1, task_id=None, **kwargs):
         super().__init__(**kwargs)
         self.failed_chapters = []
         self.catalog = {}
+        self.start_idx = (int(start_idx) if start_idx else 1) - 1
+        self.end_idx = int(end_idx) if end_idx and end_idx != '-1' else -1
+        self.task_id = task_id or "default"
+        self.total_chapters = 0
+        self.downloaded_chapters = 0
+        
+        # 进度文件路径
+        self.progress_file = f"output/progress_{self.task_id}.json"
 
         if os.path.exists(CATALOG_OUTPUT_FILE):
             try:
@@ -49,13 +57,27 @@ class ContentSpider(scrapy.Spider):
         else:
             self.logger.error(f"未找到目录文件: {CATALOG_OUTPUT_FILE}")
             self.logger.error("请先运行目录爬虫")
+            
+        # 创建进度文件
+        self._update_progress(0, 0, "starting")
 
     def start_requests(self):
         if not self.catalog:
             return
 
         chapters = self.catalog.get("chapters", [])
-        for idx, chapter in enumerate(chapters):
+        
+        # 计算实际的章节范围
+        start = max(0, self.start_idx - 1)  # 转换为0-based索引
+        end = len(chapters) if self.end_idx == -1 else min(self.end_idx, len(chapters))
+        
+        target_chapters = chapters[start:end]
+        self.total_chapters = len(target_chapters)
+        
+        # 更新进度
+        self._update_progress(0, self.total_chapters, "downloading")
+        
+        for idx, chapter in enumerate(target_chapters):
             url_path = chapter.get("url", "")
             if not url_path.startswith("/book/"):
                 continue
@@ -68,12 +90,13 @@ class ContentSpider(scrapy.Spider):
                 full_url,
                 headers=REQUEST_HEADERS,
                 callback=self.parse,
-                meta={"chapter": chapter},
+                meta={"chapter": chapter, "chapter_index": idx + 1},
                 dont_filter=True,
             )
 
     def parse(self, response):
         chapter = response.meta["chapter"]
+        chapter_index = response.meta["chapter_index"]
         novel_info = self.catalog.get("novel_info", {})
 
         item = ContentItem()
@@ -90,10 +113,41 @@ class ContentSpider(scrapy.Spider):
         raw_text = "\n".join(raw_texts).strip() if raw_texts else ""
 
         item["content"] = clean_content(raw_text)
-        # self.logger.info(f'正在处理章节: {item["chapter_title"]}\n内容为：\n{item["content"]}')
 
         if not item["content"]:
             self.logger.warning(f"章节内容为空: {response.url}")
             self.failed_chapters.append(response.url)
 
+        # 更新进度
+        self.downloaded_chapters += 1
+        self._update_progress(
+            self.downloaded_chapters, 
+            self.total_chapters, 
+            "downloading"
+        )
+
         yield item
+
+    def closed(self, reason):
+        """爬虫关闭时的回调"""
+        if reason == "finished":
+            self._update_progress(self.downloaded_chapters, self.total_chapters, "completed")
+        else:
+            self._update_progress(self.downloaded_chapters, self.total_chapters, "failed")
+
+    def _update_progress(self, current, total, status):
+        """更新进度到文件"""
+        try:
+            os.makedirs("output", exist_ok=True)
+            progress_data = {
+                "task_id": self.task_id,
+                "current": current,
+                "total": total,
+                "percentage": int((current / total * 100)) if total > 0 else 0,
+                "status": status,
+                "failed_chapters": self.failed_chapters
+            }
+            with open(self.progress_file, "w", encoding="utf-8") as f:
+                json.dump(progress_data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            self.logger.error(f"更新进度文件失败: {e}")
