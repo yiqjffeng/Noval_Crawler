@@ -1,4 +1,5 @@
 import json
+import os
 from urllib.parse import quote
 import scrapy
 
@@ -31,12 +32,12 @@ class SearchSpider(scrapy.Spider):
     def make_request(self):
         """构造请求"""
         encoded_keyword = quote(self.keyword)
-        search_api_url = f"https://www.{self.current_domain}/user/search.html?q={encoded_keyword}"
+        search_api_url = f"https://www.{self.current_domain}/user/search.html?q={encoded_keyword}&so=undefined"
 
         headers = config.REQUEST_HEADERS.copy()
         headers["referer"] = f"https://www.{self.current_domain}/s?q={encoded_keyword}"
         from book_crawler.tools import get_cookies
-        cookies = get_cookies()
+        cookies = get_cookies(domain=self.current_domain, keyword=self.keyword)
 
         self.logger.info(
             f"尝试请求: {search_api_url} "
@@ -114,6 +115,7 @@ class SearchSpider(scrapy.Spider):
         # 4. 成功时写入
         try:
             search_output_file = config.get_search_output_file(self.keyword)
+            os.makedirs(os.path.dirname(search_output_file), exist_ok=True)
             with open(search_output_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
 

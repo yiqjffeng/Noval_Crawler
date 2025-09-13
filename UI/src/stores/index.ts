@@ -1,9 +1,9 @@
-import { createPinia } from 'pinia'
-import { useBookStore } from './book'
-import { useDownloadStore } from './download'
-import { useNotificationStore } from './notification'
-import { useLoadingStore } from './loading'
+// 导出所有 stores
+export { useSearchStore } from './search';
+export { useBookStore } from './book';
+export { useDownloadStore } from './download';
 
-export const pinia = createPinia()
-
-export { useBookStore, useDownloadStore, useNotificationStore, useLoadingStore }
+// 导出 store 类型（如果需要）
+export type { SearchStore } from './search';
+export type { BookStore } from './book';
+export type { DownloadStore } from './download';

@@ -10,7 +10,7 @@ from ..config import (
     PARAGRAPH_INDENT,
     INVALID_CHAPTER_KEYWORDS,
     REQUEST_HEADERS,
-    OUTPUT_DIRECTORY,
+    TEMP_OUTPUT_DIRECTORY,
     get_catalog_output_file,
 )
 from ..items import ContentItem
@@ -49,7 +49,7 @@ class ContentSpider(scrapy.Spider):
         self.downloaded_chapters = 0
 
         # 进度文件路径
-        self.progress_file = f"{OUTPUT_DIRECTORY}/progress_{self.task_id}.json"
+        self.progress_file = f"{TEMP_OUTPUT_DIRECTORY}/progress_{self.task_id}.json"
 
         catalog_output_file = get_catalog_output_file(self.keyword)
 

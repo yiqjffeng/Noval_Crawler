@@ -9,7 +9,7 @@ import time
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 # ==================== 输出目录配置 ====================
-OUTPUT_DIRECTORY = os.path.join(PROJECT_ROOT ,'output')
+TEMP_OUTPUT_DIRECTORY = os.path.join(PROJECT_ROOT ,'temp')
 
 # 移除自动创建output目录逻辑
 # os.makedirs(OUTPUT_DIRECTORY, exist_ok=True)
@@ -21,22 +21,23 @@ OUTPUT_DIRECTORY = os.path.join(PROJECT_ROOT ,'output')
 # # os.makedirs(LOG_DIRECTORY, exist_ok=True)
 
 # 错误日志文件
-ERROR_LOG_FILE = os.path.join(OUTPUT_DIRECTORY, f"{time.time()}.log")
+ERROR_LOG_FILE = os.path.join(TEMP_OUTPUT_DIRECTORY, f"{time.time()}.log")
 
+NOVELS_OUTPUT_DIRECTORY = os.path.join(PROJECT_ROOT , 'novels')
 
 # 内容输出文件（动态生成）
 def get_content_txt_filename(book_name='剑来'):
     """获取TXT格式的小说文件名"""
-    return os.path.join(OUTPUT_DIRECTORY, f"{book_name}.txt")
+    return os.path.join(NOVELS_OUTPUT_DIRECTORY, f"{book_name}.txt")
 
 def get_content_epub_filename(book_name='剑来'):
     """获取EPUB格式的小说文件名"""
-    return os.path.join(OUTPUT_DIRECTORY, f"{book_name}.epub")
+    return os.path.join(NOVELS_OUTPUT_DIRECTORY, f"{book_name}.epub")
 
 # 进度文件模板
 def get_progress_filename(task_id):
     """获取进度文件名"""
-    return os.path.join(OUTPUT_DIRECTORY, f"progress_{task_id}.json")
+    return os.path.join(TEMP_OUTPUT_DIRECTORY, f"progress_{task_id}.json")
 
 # ==================== FastAPI相关配置 ====================
 

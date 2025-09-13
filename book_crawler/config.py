@@ -6,25 +6,19 @@ import datetime
 import os
 from random import choice
 from config import (
-    OUTPUT_DIRECTORY,
+    TEMP_OUTPUT_DIRECTORY,
     REQUEST_CONCURRENCY,
     WRITE_CONCURRENCY,
     CONCURRENT_REQUESTS_PER_DOMAIN,
     DOWNLOAD_DELAY,
     RANDOMIZE_DOWNLOAD_DELAY
 )
+from book_crawler.tools import get_supported_domains
 
 # 支持的域名列表
-SUPPORTED_DOMAINS = [
-    "97c286.cfd",
-    "efebde4.cfd",
-    "7535b44.cfd",
-    "0ae247c57c.icu",
-    "4a109.cfd"
-]
-
+SUPPORTED_DOMAINS = get_supported_domains()
 # 默认域名
-DEFAULT_DOMAIN = "97c286.cfd"
+DEFAULT_DOMAIN = SUPPORTED_DOMAINS[0]
 
 # 当前域名（会被 spider 动态更新）
 CURRENT_DOMAIN = DEFAULT_DOMAIN
@@ -56,12 +50,10 @@ MAX_TOTAL_ATTEMPTS = len(SUPPORTED_DOMAINS) * MAX_RETRY_TIMES
 RETRY_DELAY = 3  # 秒
 
 # 日志/输出配置 - 确保使用项目根目录的output
-OUTPUT_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'output')
+TEMP_OUTPUT_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'temp')
 
 # 日志目录
-LOG_DIRECTORY = os.path.join(OUTPUT_DIRECTORY, 'log')
-# 移除目录创建逻辑，避免自动创建output文件夹
-# os.makedirs(LOG_DIRECTORY, exist_ok=True)
+LOG_DIRECTORY = os.path.join(TEMP_OUTPUT_DIRECTORY, 'log')
 
 ERROR_LOG_FILE = os.path.join(LOG_DIRECTORY, f"{datetime.datetime.now()}.log")
 
@@ -69,13 +61,13 @@ ERROR_LOG_FILE = os.path.join(LOG_DIRECTORY, f"{datetime.datetime.now()}.log")
 def get_search_output_file(keyword=None):
     """根据当前关键词动态生成输出文件路径"""
     key = keyword or KEYWORD
-    return os.path.join(OUTPUT_DIRECTORY, f"search_{key}_result.json")
+    return os.path.join(TEMP_OUTPUT_DIRECTORY, f"search_{key}_result.json")
 
 # 目录爬虫配置
 def get_catalog_output_file(keyword=None):
     """根据当前关键词动态生成输出文件路径"""
     key = keyword or KEYWORD
-    return os.path.join(OUTPUT_DIRECTORY, f"catalog_{key}_result.json")
+    return os.path.join(TEMP_OUTPUT_DIRECTORY, f"catalog_{key}_result.json")
 
 # 并发控制配置
 REQUEST_CONCURRENCY = REQUEST_CONCURRENCY# 请求并发数（降低以避免反爬虫）

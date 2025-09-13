@@ -112,6 +112,7 @@ class CatalogSpider(scrapy.Spider):
             # 使用配置中的输出文件路径
             catalog_output_file = config.get_catalog_output_file(self.keyword)
             self.logger.info(f"保存数据到 {catalog_output_file}")
+            os.makedirs(os.path.dirname(catalog_output_file), exist_ok=True)
             with open(catalog_output_file, "w", encoding="utf-8") as f:
                 json.dump(output_data, f, ensure_ascii=False, indent=4)
             

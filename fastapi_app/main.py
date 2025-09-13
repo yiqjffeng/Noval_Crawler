@@ -1,8 +1,14 @@
+import sys
+import os
+
+# 添加项目根目录到Python路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from fastapi import FastAPI, HTTPException, Query, Body, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import subprocess
 import json
-import os
 import uuid
 import signal
 import atexit
@@ -11,20 +17,62 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
+from pathlib import Path
+import sys
+
+# 添加项目根目录到路径
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 from config import (
-    OUTPUT_DIRECTORY,
+    TEMP_OUTPUT_DIRECTORY,
     get_content_txt_filename,
     get_content_epub_filename,
+    FASTAPI_HOST,
+    FASTAPI_PORT
 )
-from book_crawler.config import get_catalog_output_file,get_search_output_file
-
+from book_crawler.config import get_catalog_output_file, get_search_output_file
 
 app = FastAPI(title="小说爬虫API", description="基于Scrapy的小说爬虫FastAPI接口")
+
+# CORS配置
+# 开发环境配置 - 允许本地开发服务器和常见端口
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",  # React/Vue dev server
+        "http://127.0.0.1:3000",  # React/Vue dev server
+        "http://localhost:3001",  # Vite dev server (备用端口)
+        "http://127.0.0.1:3001",  # Vite dev server (备用端口)
+        "http://localhost:5173",  # Vite dev server
+        "http://127.0.0.1:5173",  # Vite dev server
+        "http://localhost:8080",  # Vue CLI dev server
+        "http://127.0.0.1:8080",  # Vue CLI dev server
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
+    allow_headers=[
+        "*",
+        "Accept",
+        "Accept-Language",
+        "Content-Language",
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "Origin",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers"
+    ],
+    expose_headers=["*"],
+    max_age=86400,  # 24小时缓存预检请求
+)
+
 app.state.current_book_name = None
 
 # 任务管理
 executor = ThreadPoolExecutor(max_workers=3)
 tasks = {}  # 存储任务状态
+
 
 # 清理函数
 def cleanup_on_exit():
@@ -32,14 +80,14 @@ def cleanup_on_exit():
     try:
         # 清理output目录下的临时文件（保留.txt, .epub, .log文件）
         temp_patterns = [
-            "*.json",      # 搜索结果和目录缓存
+            "*.json",  # 搜索结果和目录缓存
             "progress_*",  # 进度文件
-            "*.tmp",       # 临时文件
-            "*.cache"      # 缓存文件
+            "*.tmp",  # 临时文件
+            "*.cache"  # 缓存文件
         ]
-        
+
         for pattern in temp_patterns:
-            for file_path in glob.glob(os.path.join(OUTPUT_DIRECTORY, pattern)):
+            for file_path in glob.glob(os.path.join(TEMP_OUTPUT_DIRECTORY, pattern)):
                 try:
                     os.remove(file_path)
                     print(f"已清理临时文件: {file_path}")
@@ -48,8 +96,10 @@ def cleanup_on_exit():
     except Exception as e:
         print(f"清理过程出错: {e}")
 
+
 # 注册清理函数
 atexit.register(cleanup_on_exit)
+
 
 # 处理信号
 def signal_handler(signum, frame):
@@ -58,9 +108,37 @@ def signal_handler(signum, frame):
     cleanup_on_exit()
     exit(0)
 
+
 # 注册信号处理器
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
+
+
+# OPTIONS预检请求处理 - 更全面的路径匹配
+@app.options("/api/{path:path}")
+async def options_handler(path: str):
+    """
+    处理所有API路径的OPTIONS预检请求
+    包括: /api/search, /api/catalog, /api/download/start, /api/download/tasks 等
+    """
+    return {
+        "message": "OK",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "path": f"/api/{path}"
+    }
+
+
+# 为特定端点添加OPTIONS支持
+@app.options("/api/download/tasks")
+async def options_download_tasks():
+    """为下载任务列表接口提供OPTIONS支持"""
+    return {"message": "OK", "method": "GET"}
+
+
+@app.options("/health")
+async def options_health():
+    """为健康检查接口提供OPTIONS支持"""
+    return {"message": "OK", "method": "GET"}
 
 
 class SearchRequest(BaseModel):
@@ -70,9 +148,11 @@ class SearchRequest(BaseModel):
 class CatalogRequest(BaseModel):
     novel_id: int
 
+
 class DownloadMode(str, Enum):
     txt = "txt"
     epub = "epub"
+
 
 class DownloadRequest(BaseModel):
     novel_url: str
@@ -81,25 +161,26 @@ class DownloadRequest(BaseModel):
     end_chapter: int = -1
     mode: DownloadMode = DownloadMode.txt
 
+
 # 支持两种请求方式的通用依赖
 def get_search_params(
-    keyword: Optional[str] = Query(None, description="搜索关键词")
+        keyword: Optional[str] = Query(None, description="搜索关键词")
 ) -> SearchRequest:
     return SearchRequest(keyword=keyword)
 
 
 def get_catalog_params(
-    novel_id: Optional[int] = Query(None, description="小说ID")
+        novel_id: Optional[int] = Query(None, description="小说ID")
 ) -> CatalogRequest:
     return CatalogRequest(novel_id=novel_id)
 
 
 def get_download_params(
-    novel_url: Optional[str] = Query(None, description="小说URL"),
-    book_name: Optional[str] = Query("temp", description="书名"),
-    start_chapter: Optional[int] = Query(1, description="起始章节"),
-    end_chapter: Optional[int] = Query(-1, description="结束章节(-1表示全部)"),
-    mode: Optional[DownloadMode] = Query("txt", description="下载格式"),
+        novel_url: Optional[str] = Query(None, description="小说URL"),
+        book_name: Optional[str] = Query("temp", description="书名"),
+        start_chapter: Optional[int] = Query(1, description="起始章节"),
+        end_chapter: Optional[int] = Query(-1, description="结束章节(-1表示全部)"),
+        mode: Optional[DownloadMode] = Query("txt", description="下载格式"),
 ) -> DownloadRequest:
     path = get_content_txt_filename(book_name) if mode == "txt" else get_content_epub_filename(book_name)
     return DownloadRequest(
@@ -133,7 +214,8 @@ def run_scrapy_spider(spider_name: str, args: List[str] = []) -> Dict[str, Any]:
         raise Exception(f"执行爬虫时出错: {str(e)}")
 
 
-def run_download_task(task_id: str, novel_url: str, keyword : str, book_name: str, start_chapter: int, end_chapter: int, mode: str, output_path: str):
+def run_download_task(task_id: str, novel_url: str, keyword: str, book_name: str, start_chapter: int, end_chapter: int,
+                      mode: str, output_path: str):
     """
     运行下载任务
     """
@@ -151,7 +233,7 @@ def run_download_task(task_id: str, novel_url: str, keyword : str, book_name: st
             "-a", f"task_id={task_id}",
             "-a", f'book_name={book_name}',
             '-a', f'mode={mode}',
-            '-a',f'keyword={keyword}'
+            '-a', f'keyword={keyword}'
         ]
 
         result = run_scrapy_spider("content", args)
@@ -167,8 +249,8 @@ def run_download_task(task_id: str, novel_url: str, keyword : str, book_name: st
 # 搜索小说 - 支持query和json两种方式
 @app.post("/api/search")
 async def novel_search(
-    request: SearchRequest = Body(None),
-    keyword: str = Query(None, description="搜索关键词")
+        request: SearchRequest = Body(None),
+        keyword: str = Query(None, description="搜索关键词")
 ):
     """
     小说搜索接口 - 支持query参数和JSON请求体两种方式
@@ -180,7 +262,7 @@ async def novel_search(
     try:
         # 优先使用JSON请求体，其次使用query参数
         search_keyword = request.keyword if request and request.keyword else keyword
-        
+
         if not search_keyword:
             raise HTTPException(status_code=400, detail="必须提供搜索关键词")
 
@@ -206,8 +288,8 @@ async def novel_search(
 # 获取小说目录 - 支持query和json两种方式
 @app.post("/api/catalog")
 async def novel_catalog(
-    request: CatalogRequest = Body(None),
-    novel_id: int = Query(None, description="小说ID")
+        request: CatalogRequest = Body(None),
+        novel_id: int = Query(None, description="小说ID")
 ):
     """
     获取小说目录接口 - 支持query参数和JSON请求体两种方式
@@ -223,24 +305,22 @@ async def novel_catalog(
         if novel_id_value is None:
             raise HTTPException(status_code=400, detail="必须提供小说ID")
 
-
-        
         # 从搜索结果中获取对应小说的URL
         search_file = get_search_output_file(app.state.current_book_name)
         if not os.path.exists(search_file):
             raise HTTPException(status_code=404, detail="搜索结果文件不存在，请先执行搜索")
-            
+
         with open(search_file, "r", encoding="utf-8") as f:
             search_results = json.load(f)
-            
+
         if novel_id_value >= len(search_results):
             raise HTTPException(status_code=404, detail="小说ID超出范围")
-            
+
         novel_info = search_results[novel_id_value]
         novel_url = novel_info["url_list"]
         book_name = novel_info.get("articlename", "未知书名")
         app.state.current_book_name = book_name
-        
+
         # 执行Scrapy目录爬虫
         result = run_scrapy_spider("catalog", ["-a", f"novel_url={novel_url}", "-a", f"keyword={book_name}"])
 
@@ -250,18 +330,18 @@ async def novel_catalog(
             with open(catalog_file, "r", encoding="utf-8") as f:
                 catalog_data = json.load(f)
             return {
-                "status": "success", 
-                "data": catalog_data, 
-                "message": "目录获取完成", 
+                "status": "success",
+                "data": catalog_data,
+                "message": "目录获取完成",
                 "novel_id": novel_id_value,
                 "book_name": book_name,
                 "novel_url": novel_url
             }
         else:
             return {
-                "status": "success", 
-                "data": [], 
-                "message": "目录获取完成，但未找到结果", 
+                "status": "success",
+                "data": [],
+                "message": "目录获取完成，但未找到结果",
                 "novel_id": novel_id_value,
                 "book_name": book_name,
                 "novel_url": novel_url
@@ -276,12 +356,12 @@ async def novel_catalog(
 # 开始下载小说 - 支持query和json两种方式
 @app.post("/api/download/start")
 async def start_download(
-    request: DownloadRequest = Body(None),
-    novel_url: str = Query(None, description="小说URL"),
-    book_name: str = Query("temp", description="书名"),
-    start_chapter: int = Query(1, description="起始章节"),
-    end_chapter: int = Query(-1, description="结束章节(-1表示全部)"),
-    mode: DownloadMode = Query("txt", description="下载格式")
+        request: DownloadRequest = Body(None),
+        novel_url: str = Query(None, description="小说URL"),
+        book_name: str = Query("temp", description="书名"),
+        start_chapter: int = Query(1, description="起始章节"),
+        end_chapter: int = Query(-1, description="结束章节(-1表示全部)"),
+        mode: DownloadMode = Query("txt", description="下载格式")
 ):
     """
     开始下载小说接口 - 支持query参数和JSON请求体两种方式
@@ -292,7 +372,8 @@ async def start_download(
     """
     try:
         # 优先使用JSON请求体，其次使用query参数
-        if request and any([request.novel_url, request.book_name, request.start_chapter != 1, request.end_chapter != -1, request.mode != "txt"]):
+        if request and any([request.novel_url, request.book_name, request.start_chapter != 1, request.end_chapter != -1,
+                            request.mode != "txt"]):
             download_data = request
         else:
             download_data = DownloadRequest(
@@ -302,7 +383,7 @@ async def start_download(
                 end_chapter=end_chapter,
                 mode=mode
             )
-        
+
         if not download_data.novel_url:
             raise HTTPException(status_code=400, detail="必须提供小说URL")
 
@@ -374,7 +455,7 @@ async def download_status(task_id: str):
             raise HTTPException(status_code=404, detail="任务不存在")
 
         # 读取进度文件
-        progress_file = os.path.join(OUTPUT_DIRECTORY, f"progress_{task_id}.json")
+        progress_file = os.path.join(TEMP_OUTPUT_DIRECTORY, f"progress_{task_id}.json")
         progress_data = None
 
         if os.path.exists(progress_file):
@@ -473,4 +554,4 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host=FASTAPI_HOST, port=FASTAPI_PORT)
