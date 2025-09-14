@@ -70,12 +70,9 @@ class EpubWriterPipeline:
     """用于content爬虫的EPUB文件写入pipeline"""
     
     def open_spider(self, spider):
-        # 只有content爬虫且模式为epub才使用这个pipeline
+        # 只有content爬虫才使用这个pipeline
         if spider.name != 'content':
-            return
-            
-        self.mode = getattr(spider, 'mode', 'txt')
-        if self.mode != 'epub':
+            spider.logger.info(f"EpubWriterPipeline: 跳过非content爬虫: {spider.name}")
             return
             
         if epub is None:
@@ -85,6 +82,8 @@ class EpubWriterPipeline:
         self.book_name = getattr(spider, 'book_name', '未知书名')
         self.author = getattr(spider, 'author', '未知作者')
         
+        spider.logger.info(f"EpubWriterPipeline: 初始化EPUB写入器，书名: {self.book_name}, 作者: {self.author}")
+        
         # 初始化EPUB书籍
         self.book = epub.EpubBook()
         self.book.set_identifier('id123456')
@@ -92,49 +91,69 @@ class EpubWriterPipeline:
         self.book.set_language('zh')
         self.book.add_author(self.author)
         
-        # 存储章节
-        self.chapters = []
+        # 存储章节数据，按索引排序
+        self.chapter_data = {}  # 存储章节数据，按索引排序
         self.spine = ['nav']
         
+        spider.logger.info("EpubWriterPipeline: EPUB书籍初始化完成")
+        
     def process_item(self, item, spider):
-        if spider.name != 'content' or getattr(spider, 'mode', 'txt') != 'epub':
+        if spider.name != 'content':
             return item
             
         if epub is None:
+            spider.logger.warning("EpubWriterPipeline: ebooklib未安装，跳过EPUB处理")
             return item
             
-        # 创建EPUB章节
-        chapter = epub.EpubHtml(
-            title=item['chapter_title'],
-            file_name=f"chapter_{len(self.chapters)}.xhtml",
-            lang='zh'
-        )
+        # 确保pipeline已初始化
+        if not hasattr(self, 'chapter_data'):
+            spider.logger.warning("EpubWriterPipeline: 未正确初始化，跳过章节处理")
+            return item
+            
+        # 获取章节索引
+        chapter_index = int(item.get('chapter_index', 0))
         
-        # 设置章节内容
-        chapter_content = self._format_epub_content(
-            item['chapter_title'], 
-            item['content']
-        )
-        chapter.content = chapter_content
+        # 存储章节数据
+        self.chapter_data[chapter_index] = {
+            'title': item['chapter_title'],
+            'content': item['content']
+        }
         
-        # 添加到书籍
-        self.book.add_item(chapter)
-        self.chapters.append(chapter)
-        self.spine.append(chapter)
-        
-        spider.logger.info(f"添加EPUB章节: {item['chapter_title']}")
+        spider.logger.info(f"EpubWriterPipeline: 收集EPUB章节: {item['chapter_title']} (索引: {chapter_index})")
         return item
         
     def close_spider(self, spider):
-        if spider.name != 'content' or getattr(spider, 'mode', 'txt') != 'epub':
+        if spider.name != 'content':
+            spider.logger.info(f"EpubWriterPipeline: 跳过非content爬虫关闭: {spider.name}")
             return
             
         if epub is None:
+            spider.logger.error("EpubWriterPipeline: ebooklib未安装，无法生成EPUB")
+            return
+            
+        # 检查是否有收集到的章节数据
+        if not hasattr(self, 'chapter_data'):
+            spider.logger.error("EpubWriterPipeline: 章节数据未初始化")
+            return
+            
+        if not self.chapter_data:
+            spider.logger.warning("EpubWriterPipeline: 没有收集到任何章节数据")
             return
             
         try:
+            spider.logger.info(f"EpubWriterPipeline: 开始生成EPUB，共收集到 {len(self.chapter_data)} 个章节")
+            
+            # 按索引排序创建章节
+            chapters = []
+            for index in sorted(self.chapter_data.keys()):
+                data = self.chapter_data[index]
+                spider.logger.info(f"EpubWriterPipeline: 创建章节 {index}: {data['title']}")
+                chapter = self._create_epub_chapter(data['title'], data['content'], index)
+                chapters.append(chapter)
+                self.spine.append(chapter)
+            
             # 设置目录
-            self.book.toc = self.chapters
+            self.book.toc = chapters
             
             # 添加导航文件
             self.book.add_item(epub.EpubNcx())
@@ -175,13 +194,31 @@ class EpubWriterPipeline:
             
             # 输出EPUB文件
             output_path = get_content_epub_filename(self.book_name)
+            spider.logger.info(f"EpubWriterPipeline: 准备写入EPUB文件到: {output_path}")
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             epub.write_epub(output_path, self.book, {})
             
-            spider.logger.info(f"EPUB文件已生成: {output_path}")
+            spider.logger.info(f"EpubWriterPipeline: EPUB文件已成功生成: {output_path}，共{len(chapters)}个章节")
             
         except Exception as e:
-            spider.logger.error(f"生成EPUB失败: {str(e)}")
+            spider.logger.error(f"EpubWriterPipeline: 生成EPUB失败: {str(e)}", exc_info=True)
+    
+    def _create_epub_chapter(self, title: str, content: str, index: int) -> epub.EpubHtml:
+        """创建EPUB章节"""
+        chapter = epub.EpubHtml(
+            title=title,
+            file_name=f"chapter_{index:04d}.xhtml",
+            lang='zh',
+        )
+        
+        # 格式化内容
+        formatted_content = self._format_epub_content(title, content)
+        chapter.content = formatted_content
+        
+        # 添加到书籍
+        self.book.add_item(chapter)
+        
+        return chapter
     
     def _format_epub_content(self, title: str, content: str) -> str:
         """格式EPUB章节内容"""

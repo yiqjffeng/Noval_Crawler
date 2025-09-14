@@ -66,7 +66,7 @@
         </div>
       </div>
       
-      <LoadingSpinner v-else-if="isLoadingCatalog" text="正在加载目录..." />
+      <WizardLoader v-else-if="isLoadingCatalog" text="正在加载目录..." :fullscreen="false" />
       
       <div v-else-if="currentBook" class="book-detail">
         <div class="book-header">
@@ -131,7 +131,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useBookStore, useSearchStore } from '@/stores';
 import { BaseButton } from '@/components/common';
-import { LoadingSpinner } from '@/components/loading';
+import { WizardLoader } from '@/components/loading';
 import ChapterLink from '@/components/ChapterLink.vue';
 import type { Chapter, ErrorState } from '@/types';
 import { ArrowLeftIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline';

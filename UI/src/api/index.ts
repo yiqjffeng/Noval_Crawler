@@ -3,7 +3,7 @@ import type { BookCrawlerAPI } from '@/types/api';
 import type { ApiResponse } from '@/types/common';
 
 // API 基础URL配置
-export const API_BASE_URL = 'http://127.0.0.1:8000';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 // 导出所有API模块
 export * from './search';

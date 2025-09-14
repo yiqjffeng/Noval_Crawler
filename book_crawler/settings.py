@@ -48,9 +48,9 @@ DEFAULT_REQUEST_HEADERS = REQUEST_HEADERS
 
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
-#SPIDER_MIDDLEWARES = {
-#    "book_crawler.middlewares.BookCrawlerSpiderMiddleware": 543,
-#}
+SPIDER_MIDDLEWARES = {
+   "book_crawler.middlewares.PipelineSelectorMiddleware": 500,
+}
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
@@ -68,11 +68,6 @@ DEFAULT_REQUEST_HEADERS = REQUEST_HEADERS
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
     "book_crawler.pipelines.TxtWriterPipeline": 300,
-}
-
-# 启用pipeline选择中间件
-EXTENSIONS = {
-    "book_crawler.middlewares.PipelineSelectorMiddleware": 500,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)

@@ -4,6 +4,7 @@
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
 from scrapy import signals
+from fastapi_app.model import DownloadMode
 
 # useful for handling different item types with a single interface
 from itemadapter import ItemAdapter
@@ -53,44 +54,71 @@ class BookCrawlerSpiderMiddleware:
         spider.logger.info("Spider opened: %s" % spider.name)
 
 
+import logging
+from scrapy import signals
+
+logger = logging.getLogger(__name__)
+
 class PipelineSelectorMiddleware:
-    """根据爬虫名称选择不同的pipeline"""
-    
-    def __init__(self, crawler):
-        self.crawler = crawler
-        
+    """
+    根据爬虫名称和mode参数动态选择pipeline
+    """
+
     @classmethod
     def from_crawler(cls, crawler):
-        return cls(crawler)
-    
+        s = cls()
+        crawler.signals.connect(s.spider_opened, signal=signals.spider_opened)
+        return s
+
     def spider_opened(self, spider):
-        """根据爬虫类型设置不同的pipeline"""
-        
-        # 定义每个爬虫使用的pipeline
-        pipeline_configs = {
-            'search': {
-                'ITEM_PIPELINES': {
-                    'book_crawler.pipelines.NoOutputPipeline': 300,
-                }
-            },
-            'catalog': {
-                'ITEM_PIPELINES': {
-                    'book_crawler.pipelines.NoOutputPipeline': 300,
-                }
-            },
-            'content': {
-                'ITEM_PIPELINES': {
-                    'book_crawler.pipelines.TxtWriterPipeline': 300,
-                }
-            }
-        }
-        
-        # 获取当前爬虫的配置
+        """根据爬虫名称和mode参数设置对应的pipeline"""
         spider_name = spider.name
-        if spider_name in pipeline_configs:
-            # 动态更新pipeline配置
-            for key, value in pipeline_configs[spider_name].items():
-                setattr(self.crawler.settings, key, value)
+        
+        # # 默认配置
+        # pipeline_configs = {}
+        #
+        # if spider_name == 'search':
+        #     pipeline_configs = {
+        #         'book_crawler.pipelines.NoOutputPipeline': 300,
+        #     }
+        #     logger.info(f"Pipeline配置已更新: {spider_name}爬虫使用搜索模式")
+        #
+        # elif spider_name == 'catalog':
+        #     pipeline_configs = {
+        #         'book_crawler.pipelines.NoOutputPipeline': 300,
+        #     }
+        #     logger.info(f"Pipeline配置已更新: {spider_name}爬虫使用目录模式")
+        #
+        # elif spider_name == 'content':
+        #     # 获取mode参数
+        #     mode_value = getattr(spider, 'mode', 'txt')
+        #     mode_str = str(mode_value).lower()
+        #
+        #     if 'epub' in mode_str:
+        #         pipeline_configs = {
+        #             'book_crawler.pipelines.EpubWriterPipeline': 300,
+        #         }
+        #         logger.info(f"Pipeline配置已更新: {spider_name}爬虫使用epub模式")
+        #     else:
+        #         pipeline_configs = {
+        #             'book_crawler.pipelines.TxtWriterPipeline': 300,
+        #         }
+        #         logger.info(f"Pipeline配置已更新: {spider_name}爬虫使用txt模式")
+        #
+        #     logger.info(f"实际mode参数值: {mode_value} -> 转换后: {mode_str}")
+        #
+        # else:
+        #     pipeline_configs = {
+        #         'book_crawler.pipelines.NoOutputPipeline': 300,
+        #     }
+        #     logger.info(f"Pipeline配置已更新: {spider_name}爬虫使用默认模式")
+        #
+        # # 设置pipeline配置 - 使用正确的方法
+        # spider.custom_settings = spider.custom_settings or {}
+        # spider.custom_settings['ITEM_PIPELINES'] = pipeline_configs
+        #
+        # # 打印最终配置
+        # logger.info(f"最终ITEM_PIPELINES配置: {pipeline_configs}")
 
 
 class BookCrawlerDownloaderMiddleware:

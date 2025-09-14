@@ -53,3 +53,54 @@ CONCURRENT_REQUESTS_PER_DOMAIN = 3           # 每个域名的并发数
 # 反爬虫配置
 DOWNLOAD_DELAY = 2           # 请求间隔（秒）
 RANDOMIZE_DOWNLOAD_DELAY = 1  # 随机延迟范围
+
+# ==================== FastAPI应用配置 ====================
+
+# CORS配置 - 可经常性变动的配置
+CORS_ORIGINS = [
+    "http://localhost:3000",  # React/Vue dev server
+    "http://127.0.0.1:3000",  # React/Vue dev server
+    "http://localhost:3001",  # Vite dev server (备用端口)
+    "http://127.0.0.1:3001",  # Vite dev server (备用端口)
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173",  # Vite dev server
+    "http://localhost:8080",  # Vue CLI dev server
+    "http://127.0.0.1:8080",  # Vue CLI dev server
+]
+
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"]
+CORS_ALLOW_HEADERS = [
+    "*",
+    "Accept",
+    "Accept-Language",
+    "Content-Language",
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Origin",
+    "Access-Control-Request-Method",
+    "Access-Control-Request-Headers"
+]
+CORS_EXPOSE_HEADERS = ["*"]
+CORS_MAX_AGE = 86400  # 24小时缓存预检请求
+
+# 线程池配置
+THREAD_POOL_MAX_WORKERS = 3  # 线程池最大工作线程数
+
+# 临时文件清理配置
+TEMP_CLEANUP_PATTERNS = [
+    "*.json",  # 搜索结果和目录缓存
+    "progress_*",  # 进度文件
+    "*.tmp",  # 临时文件
+    "*.cache"  # 缓存文件
+]
+
+# API接口默认值配置
+DEFAULT_BOOK_NAME = "temp"
+DEFAULT_START_CHAPTER = 1
+DEFAULT_END_CHAPTER = -1  # -1表示全部章节
+DEFAULT_DOWNLOAD_MODE = "txt"  # txt或epub
+
+# Scrapy爬虫超时配置（秒）
+SPIDER_TIMEOUT = 3600  # 1小时

@@ -2,7 +2,6 @@
 import json
 import os
 from json import JSONDecodeError
-
 import scrapy
 
 from ..config import (
@@ -14,7 +13,6 @@ from ..config import (
     get_catalog_output_file,
 )
 from ..items import ContentItem
-
 
 def clean_content(text: str) -> str:
     """清洗章节内容"""
@@ -36,7 +34,13 @@ class ContentSpider(scrapy.Spider):
     name = "content"
     allowed_domains = SUPPORTED_DOMAINS.copy()
 
-    def __init__(self, start_idx=1, end_idx=-1, task_id=None, keyword : str = None, book_name: str = None, **kwargs):
+    def __init__(self,
+                 start_idx=1,
+                 end_idx=-1,
+                 task_id=None,
+                 keyword : str = None,
+                 book_name: str = None,
+                 **kwargs):
         super().__init__(**kwargs)
         self.failed_chapters = []
         self.catalog = {}
@@ -51,7 +55,7 @@ class ContentSpider(scrapy.Spider):
         # 进度文件路径
         self.progress_file = f"{TEMP_OUTPUT_DIRECTORY}/progress_{self.task_id}.json"
 
-        catalog_output_file = get_catalog_output_file(self.keyword)
+        catalog_output_file = get_catalog_output_file(self.book_name)
 
         if os.path.exists(catalog_output_file):
             try:
@@ -64,7 +68,7 @@ class ContentSpider(scrapy.Spider):
             self.logger.error("请先运行目录爬虫")
 
         # 创建进度文件
-        self._update_progress(0, 0, "starting")
+        self._update_progress(0, self.end_idx - self.start_idx + 1, "starting")
 
     def start_requests(self):
         if not self.catalog:
@@ -113,6 +117,7 @@ class ContentSpider(scrapy.Spider):
         item["detail_url"] = response.url
         item["domain"] = response.url.split("/")[2]
         item['book_name'] = self.book_name
+        item["chapter_index"] = chapter_index  # 添加章节索引
 
         # 提取正文
         raw_texts = response.xpath('//*[@id="chaptercontent"]//text()').getall()

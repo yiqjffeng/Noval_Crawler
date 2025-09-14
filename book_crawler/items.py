@@ -39,3 +39,4 @@ class ContentItem(scrapy.Item):
     content = scrapy.Field()  # 章节内容
     domain = scrapy.Field()  # 使用的域名
     detail_url = scrapy.Field()  # 详情页链接
+    chapter_index = scrapy.Field()  # 章节索引，用于排序

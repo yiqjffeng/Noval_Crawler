@@ -84,7 +84,7 @@ router.beforeEach((to, from, next) => {
   if (to.meta?.title) {
     document.title = `${to.meta.title} - 小说爬虫`
   }
-  
+
   next()
 })
 
@@ -92,7 +92,7 @@ router.beforeEach((to, from, next) => {
 router.afterEach((to, from) => {
   const toTransition = to.meta?.transition as keyof typeof routeTransitions || 'fade'
   const fromTransition = from.meta?.transition as keyof typeof routeTransitions || 'fade'
-  
+
   // 这里可以根据需要处理路由切换动画
 })
 

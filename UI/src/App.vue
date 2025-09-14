@@ -2,10 +2,9 @@
   <div id="app" class="app-container">
     <!-- 全局加载掩罩 -->
     <div v-if="isAppLoading" class="app-loading">
-      <LoadingSpinner 
-        size="large" 
+      <BookLoader 
         text="正在初始化应用..."
-        :animated="true"
+        fullscreen
       />
     </div>
     
@@ -33,7 +32,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { LoadingSpinner } from '@/components/loading'
+import { BookLoader } from '@/components/loading'
 import { useDownloadStore } from '@/stores'
 
 const route = useRoute()

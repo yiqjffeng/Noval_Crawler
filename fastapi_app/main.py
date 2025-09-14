@@ -3,7 +3,6 @@ import os
 import requests
 from fastapi import FastAPI, HTTPException, Query, Body, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import subprocess
 import json
 import uuid
@@ -13,9 +12,9 @@ import glob
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
-from enum import Enum
 from pathlib import Path
 import sys
+from fastapi_app.model import SearchRequest, CatalogRequest,DownloadRequest,DownloadMode
 # 添加项目根目录到Python路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -28,64 +27,50 @@ from config import (
     get_content_txt_filename,
     get_content_epub_filename,
     FASTAPI_HOST,
-    FASTAPI_PORT
+    FASTAPI_PORT,
+    CORS_ORIGINS,
+    CORS_ALLOW_CREDENTIALS,
+    CORS_ALLOW_METHODS,
+    CORS_ALLOW_HEADERS,
+    CORS_EXPOSE_HEADERS,
+    CORS_MAX_AGE,
+    THREAD_POOL_MAX_WORKERS,
+    TEMP_CLEANUP_PATTERNS,
+    DEFAULT_BOOK_NAME,
+    DEFAULT_START_CHAPTER,
+    DEFAULT_END_CHAPTER,
+    DEFAULT_DOWNLOAD_MODE,
+    SPIDER_TIMEOUT
 )
 from book_crawler.config import get_catalog_output_file, get_search_output_file
 
 app = FastAPI(title="小说爬虫API", description="基于Scrapy的小说爬虫FastAPI接口")
 
-# CORS配置
-# 开发环境配置 - 允许本地开发服务器和常见端口
+# CORS配置 - 使用config.py中的可配置项
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # React/Vue dev server
-        "http://127.0.0.1:3000",  # React/Vue dev server
-        "http://localhost:3001",  # Vite dev server (备用端口)
-        "http://127.0.0.1:3001",  # Vite dev server (备用端口)
-        "http://localhost:5173",  # Vite dev server
-        "http://127.0.0.1:5173",  # Vite dev server
-        "http://localhost:8080",  # Vue CLI dev server
-        "http://127.0.0.1:8080",  # Vue CLI dev server
-    ],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
-    allow_headers=[
-        "*",
-        "Accept",
-        "Accept-Language",
-        "Content-Language",
-        "Content-Type",
-        "Authorization",
-        "X-Requested-With",
-        "Origin",
-        "Access-Control-Request-Method",
-        "Access-Control-Request-Headers"
-    ],
-    expose_headers=["*"],
-    max_age=86400,  # 24小时缓存预检请求
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=CORS_ALLOW_CREDENTIALS,
+    allow_methods=CORS_ALLOW_METHODS,
+    allow_headers=CORS_ALLOW_HEADERS,
+    expose_headers=CORS_EXPOSE_HEADERS,
+    max_age=CORS_MAX_AGE,
 )
 
 app.state.current_book_name = None
+app.state.current_keyword = None
 
-# 任务管理
-executor = ThreadPoolExecutor(max_workers=3)
+# 任务管理 - 使用config.py中的可配置线程池大小
+executor = ThreadPoolExecutor(max_workers=THREAD_POOL_MAX_WORKERS)
 tasks = {}  # 存储任务状态
 
 
-# 清理函数
+# 清理函数 - 使用config.py中的清理模式配置
 def cleanup_on_exit():
     """程序退出时清理临时文件"""
     try:
-        # 清理output目录下的临时文件（保留.txt, .epub, .log文件）
-        temp_patterns = [
-            "*.json",  # 搜索结果和目录缓存
-            "progress_*",  # 进度文件
-            "*.tmp",  # 临时文件
-            "*.cache"  # 缓存文件
-        ]
-
-        for pattern in temp_patterns:
+        # 使用config.py中配置的清理模式
+        for pattern in TEMP_CLEANUP_PATTERNS:
             for file_path in glob.glob(os.path.join(TEMP_OUTPUT_DIRECTORY, pattern)):
                 try:
                     os.remove(file_path)
@@ -140,27 +125,6 @@ async def options_health():
     return {"message": "OK", "method": "GET"}
 
 
-class SearchRequest(BaseModel):
-    keyword: str
-
-
-class CatalogRequest(BaseModel):
-    novel_id: int
-
-
-class DownloadMode(str, Enum):
-    txt = "txt"
-    epub = "epub"
-
-
-class DownloadRequest(BaseModel):
-    novel_url: str
-    book_name: str = "temp"
-    start_chapter: int = 1
-    end_chapter: int = -1
-    mode: DownloadMode = DownloadMode.txt
-
-
 # 支持两种请求方式的通用依赖
 def get_search_params(
         keyword: Optional[str] = Query(None, description="搜索关键词")
@@ -176,10 +140,10 @@ def get_catalog_params(
 
 def get_download_params(
         novel_url: Optional[str] = Query(None, description="小说URL"),
-        book_name: Optional[str] = Query("temp", description="书名"),
-        start_chapter: Optional[int] = Query(1, description="起始章节"),
-        end_chapter: Optional[int] = Query(-1, description="结束章节(-1表示全部)"),
-        mode: Optional[DownloadMode] = Query("txt", description="下载格式"),
+        book_name: Optional[str] = Query(DEFAULT_BOOK_NAME, description="书名"),
+        start_chapter: Optional[int] = Query(DEFAULT_START_CHAPTER, description="起始章节"),
+        end_chapter: Optional[int] = Query(DEFAULT_END_CHAPTER, description="结束章节(-1表示全部)"),
+        mode: Optional[DownloadMode] = Query(DEFAULT_DOWNLOAD_MODE, description="下载格式"),
 ) -> DownloadRequest:
     path = get_content_txt_filename(book_name) if mode == "txt" else get_content_epub_filename(book_name)
     return DownloadRequest(
@@ -200,8 +164,8 @@ def run_scrapy_spider(spider_name: str, args: List[str] = []) -> Dict[str, Any]:
         cmd = ["scrapy", "crawl", spider_name] + args
         print(f"执行命令: {' '.join(cmd)}")
 
-        # 执行Scrapy爬虫
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=".", timeout=3600)
+        # 执行Scrapy爬虫 - 使用config.py中的超时配置
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=".", timeout=SPIDER_TIMEOUT)
 
         if result.returncode != 0:
             raise Exception(f"爬虫执行失败: {result.stderr}")
@@ -214,16 +178,24 @@ def run_scrapy_spider(spider_name: str, args: List[str] = []) -> Dict[str, Any]:
 
 
 def run_download_task(task_id: str, novel_url: str, keyword: str, book_name: str, start_chapter: int, end_chapter: int,
-                      mode: str, output_path: str):
+                      mode: DownloadMode, output_path: str):
     """
     运行下载任务
     """
     try:
         tasks[task_id]["status"] = "running"
         tasks[task_id]["message"] = "正在获取目录..."
+        catalog_file = get_catalog_output_file(app.state.current_book_name)
+        if not os.path.exists(catalog_file):
+            tasks[task_id]["status"] = "failed"
+            tasks[task_id]["message"] = "获取目录失败,目录文件不存在"
+            return
 
-        # 先获取目录 - 使用原始keyword避免创建新的搜索结果
-        catalog_result = run_scrapy_spider("catalog", ["-a", f"novel_url={novel_url}", "-a", f"keyword={keyword}"])
+        # 根据mode选择对应的pipeline
+        if mode == DownloadMode.epub:
+            pipeline_setting = 'ITEM_PIPELINES={"book_crawler.pipelines.EpubWriterPipeline":300}'
+        else:  # txt模式
+            pipeline_setting = 'ITEM_PIPELINES={"book_crawler.pipelines.TxtWriterPipeline":300}'
 
         # 运行内容爬虫
         args = [
@@ -231,8 +203,9 @@ def run_download_task(task_id: str, novel_url: str, keyword: str, book_name: str
             "-a", f"end_idx={end_chapter}",
             "-a", f"task_id={task_id}",
             "-a", f'book_name={book_name}',
-            '-a', f'mode={mode}',
-            '-a', f'keyword={keyword}'
+            "-a", f'mode={mode.value}',
+            "-a", f'keyword={keyword}',
+            "-s", pipeline_setting
         ]
 
         result = run_scrapy_spider("content", args)
@@ -266,6 +239,7 @@ async def novel_search(
             raise HTTPException(status_code=400, detail="必须提供搜索关键词")
 
         app.state.current_book_name = search_keyword
+        app.state.current_keyword = search_keyword
 
         # 读取搜索结果
         search_output_file = get_search_output_file(search_keyword)
@@ -312,8 +286,8 @@ async def novel_catalog(
 
 
         # 从搜索结果中获取对应小说的URL
-        search_file = get_search_output_file(app.state.current_book_name)
-        if not os.path.exists(search_file):
+        search_file = get_search_output_file(app.state.current_keyword)
+        if not os.path.exists(search_file) or not app.state.current_keyword:
             raise HTTPException(status_code=404, detail="搜索结果文件不存在，请先执行搜索")
 
         with open(search_file, "r", encoding="utf-8") as f:
@@ -419,6 +393,7 @@ async def start_download(
         tasks[task_id] = {
             "status": "running",
             "novel_url": download_data.novel_url,
+            "task_id": task_id,
             "book_name": download_data.book_name,
             "start_chapter": download_data.start_chapter,
             "end_chapter": download_data.end_chapter,
@@ -546,12 +521,22 @@ async def get_tasks():
     try:
         task_list = []
         for task_id, task_info in tasks.items():
+            progress_file = os.path.join(TEMP_OUTPUT_DIRECTORY, f"progress_{task_id}.json")
+            progress_data = None
+
+            if os.path.exists(progress_file):
+                try:
+                    with open(progress_file, "r", encoding="utf-8") as f:
+                        progress_data = json.load(f)
+                except Exception as e:
+                    pass
             task_list.append({
                 "task_id": task_id,
                 "status": task_info["status"],
                 "book_name": task_info["book_name"],
                 "novel_url": task_info["novel_url"],
                 "start_chapter": task_info["start_chapter"],
+                "current_chapter": progress_data.get("current", 0),
                 "end_chapter": task_info["end_chapter"],
                 "start_time": task_info["start_time"]
             })

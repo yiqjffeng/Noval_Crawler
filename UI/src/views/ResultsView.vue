@@ -70,10 +70,11 @@
     <div class="results-content">
       <!-- 加载状态 -->
       <div v-if="isSearching" class="loading-section">
-        <LoadingSpinner
-          size="large"
+        <WizardLoader
           text="正在搜索小说..."
-          :animated="true"
+          :fullscreen="true"
+          :show-progress="true"
+          :progress="searchProgress"
         />
       </div>
       
@@ -245,7 +246,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useSearchStore, useBookStore } from '@/stores';
 import { BaseButton, BaseCard } from '@/components/common';
-import { LoadingSpinner } from '@/components/loading';
+import { WizardLoader } from '@/components/loading';
 import { truncateText } from '@/utils/format';
 import { staggerAnimation } from '@/utils/animation';
 
@@ -280,6 +281,7 @@ const newSearchKeyword = ref('');
 const viewMode = ref<'grid' | 'list'>('grid');
 const sortBy = ref('default');
 const searchTime = ref<number | null>(null);
+const searchProgress = ref(0);
 
 // 直接显示所有搜索结果，为每个结果添加索引信息
 const displayedResults = computed(() => 
@@ -308,9 +310,15 @@ const handleNewSearch = async () => {
   showSearchBox.value = false;
   const startTime = Date.now();
   
+  // 模拟搜索进度
+  const progressInterval = setInterval(() => {
+    searchProgress.value = Math.min(searchProgress.value + Math.random() * 15, 90);
+  }, 200);
+  
   try {
     await searchStore.performSearch(newSearchKeyword.value);
     searchTime.value = (Date.now() - startTime) / 1000;
+    searchProgress.value = 100;
     newSearchKeyword.value = '';
     
     // 重新动画显示结果
@@ -319,6 +327,9 @@ const handleNewSearch = async () => {
     });
   } catch (error) {
     console.error('搜索失败:', error);
+  } finally {
+    clearInterval(progressInterval);
+    searchProgress.value = 0;
   }
 };
 
