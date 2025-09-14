@@ -32,8 +32,9 @@ class TxtWriterPipeline:
         self.executor = ThreadPoolExecutor(max_workers=settings.getint("WRITE_CONCURRENCY"))
         self.tasks = []
         self.book_name = getattr(spider, 'book_name', '未知书名')
-        self.output_file = open(get_content_txt_filename(self.book_name), "w", encoding="utf-8")
-        os.makedirs(os.path.dirname(self.output_file.name), exist_ok=True)
+        self.output_file_name = get_content_txt_filename(self.book_name)
+        os.makedirs(os.path.dirname(self.output_file_name), exist_ok=True)
+        self.output_file = open(self.output_file_name, "w", encoding="utf-8")
 
     def process_item(self, item, spider):
         if spider.name != 'content':

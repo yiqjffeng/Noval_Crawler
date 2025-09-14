@@ -1,9 +1,6 @@
-import sys
 import os
 
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+import requests
 from fastapi import FastAPI, HTTPException, Query, Body, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -19,6 +16,8 @@ from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from pathlib import Path
 import sys
+# 添加项目根目录到Python路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 添加项目根目录到路径
 project_root = Path(__file__).parent.parent
@@ -268,11 +267,17 @@ async def novel_search(
 
         app.state.current_book_name = search_keyword
 
+        # 读取搜索结果
+        search_output_file = get_search_output_file(search_keyword)
+
+        if os.path.exists(search_output_file):
+            with open(search_output_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return {"status": "success", "data": data, "message": "搜索完成", "keyword": search_keyword}
+
         # 执行Scrapy搜索爬虫
         result = run_scrapy_spider("search", ["-a", f"keyword={search_keyword}"])
 
-        # 读取搜索结果
-        search_output_file = get_search_output_file(search_keyword)
         if os.path.exists(search_output_file):
             with open(search_output_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -305,6 +310,7 @@ async def novel_catalog(
         if novel_id_value is None:
             raise HTTPException(status_code=400, detail="必须提供小说ID")
 
+
         # 从搜索结果中获取对应小说的URL
         search_file = get_search_output_file(app.state.current_book_name)
         if not os.path.exists(search_file):
@@ -321,11 +327,24 @@ async def novel_catalog(
         book_name = novel_info.get("articlename", "未知书名")
         app.state.current_book_name = book_name
 
+        catalog_file = get_catalog_output_file(app.state.current_book_name)
+        if os.path.exists(catalog_file):
+            with open(catalog_file, "r", encoding="utf-8") as f:
+                catalog_data = json.load(f)
+            return {
+                "status": "success",
+                "data": catalog_data,
+                "message": "目录获取完成",
+                "novel_id": novel_id_value,
+                "book_name": book_name,
+                "novel_url": novel_url
+            }
+
         # 执行Scrapy目录爬虫
         result = run_scrapy_spider("catalog", ["-a", f"novel_url={novel_url}", "-a", f"keyword={book_name}"])
 
         # 读取目录结果
-        catalog_file = get_catalog_output_file(app.state.current_book_name)
+
         if os.path.exists(catalog_file):
             with open(catalog_file, "r", encoding="utf-8") as f:
                 catalog_data = json.load(f)
@@ -548,7 +567,11 @@ async def health_check():
     """
     健康检查接口
     """
-    return {"status": "healthy", "message": "服务运行正常"}
+    try:
+        response = requests.get("https://www.baidu.com")
+        return {"status": "healthy", "message": "服务运行正常"}
+    except Exception as e:
+        return {"status": "unhealthy", "message": "无法连接到互联网"}
 
 
 if __name__ == "__main__":

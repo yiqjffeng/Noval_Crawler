@@ -28,8 +28,14 @@
                   v-model.number="downloadConfig.startChapter" 
                   type="number" 
                   min="1"
+                  :max="maxChapter"
                   class="form-input"
+                  :class="{ 'input-error': isStartChapterInvalid }"
+                  @input="validateStartChapter"
                 />
+                <span v-if="isStartChapterInvalid" class="error-message">
+                  请输入1-{{ maxChapter }}之间的章节
+                </span>
               </div>
               
               <div class="form-group">
@@ -38,8 +44,15 @@
                   v-model.number="downloadConfig.endChapter" 
                   type="number" 
                   min="1"
+                  :max="maxChapter"
                   class="form-input"
+                  :class="{ 'input-error': isEndChapterInvalid }"
+                  @input="validateEndChapter"
                 />
+                <span class="chapter-info">最大章节: {{ maxChapter }}</span>
+                <span v-if="isRangeInvalid && !isStartChapterInvalid && !isEndChapterInvalid" class="error-message">
+                  结束章节必须大于等于起始章节
+                </span>
               </div>
               
               <div class="form-group">
@@ -57,6 +70,7 @@
                 variant="primary" 
                 size="large"
                 :loading="isDownloading"
+                :disabled="isStartChapterInvalid || isEndChapterInvalid || isRangeInvalid"
                 @click="startDownload"
               >
                 开始下载
@@ -86,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDownloadStore, useBookStore } from '@/stores';
 import { BaseButton, BaseCard, BaseProgress } from '@/components/common';
@@ -101,13 +115,46 @@ const downloadConfig = computed(() => downloadStore.downloadConfig);
 const isDownloading = computed(() => downloadStore.isDownloading); 
 const currentTask = computed(() => downloadStore.currentTask);
 const currentBook = computed(() => bookStore.currentBook);
+const maxChapter = computed(() => bookStore.chapterCount || 999999);
 
-const goBack = () => {
-  router.go(-1);
+// 验证状态
+const isStartChapterInvalid = ref(false);
+const isEndChapterInvalid = ref(false);
+const isRangeInvalid = ref(false);
+
+// 实时验证函数
+const validateStartChapter = () => {
+  const start = downloadConfig.value.startChapter;
+  isStartChapterInvalid.value = start < 1 || start > maxChapter.value;
+  validateRange();
+};
+
+const validateEndChapter = () => {
+  const end = downloadConfig.value.endChapter;
+  isEndChapterInvalid.value = end < 1 || end > maxChapter.value;
+  validateRange();
+};
+
+const validateRange = () => {
+  if (isStartChapterInvalid.value || isEndChapterInvalid.value) {
+    isRangeInvalid.value = false;
+    return;
+  }
+  isRangeInvalid.value = downloadConfig.value.endChapter < downloadConfig.value.startChapter;
 };
 
 const startDownload = async () => {
   if (!currentBook.value) return;
+  
+  // 最终验证
+  validateStartChapter();
+  validateEndChapter();
+  validateRange();
+  
+  // 如果有错误，提示用户
+  if (isStartChapterInvalid.value || isEndChapterInvalid.value || isRangeInvalid.value) {
+    return;
+  }
   
   const params = {
     novel_url: currentBook.value.url_list,
@@ -135,8 +182,38 @@ const getStatusText = (status: DownloadTaskStatus): string => {
 onMounted(() => {
   if (currentBook.value) {
     downloadStore.updateDownloadConfig({
-      fileName: currentBook.value.articlename
+      fileName: currentBook.value.articlename,
+      startChapter: 1,
+      endChapter: maxChapter.value
     });
+  }
+});
+
+// 监听maxChapter变化，自动调整超出范围的值
+watch(maxChapter, (newMaxChapter) => {
+  if (newMaxChapter > 0) {
+    const currentStart = downloadConfig.value.startChapter;
+    const currentEnd = downloadConfig.value.endChapter;
+    
+    let newStart = currentStart;
+    let newEnd = currentEnd;
+    
+    if (currentStart > newMaxChapter) {
+      newStart = newMaxChapter;
+    }
+    if (currentEnd > newMaxChapter) {
+      newEnd = newMaxChapter;
+    }
+    
+    downloadStore.updateDownloadConfig({
+      startChapter: newStart,
+      endChapter: newEnd
+    });
+    
+    // 重新验证
+    validateStartChapter();
+    validateEndChapter();
+    validateRange();
   }
 });
 </script>
@@ -236,5 +313,23 @@ onMounted(() => {
 
 .progress-info p {
   margin: 0.25rem 0;
+}
+
+.chapter-info {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.input-error {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.error-message {
+  color: #ef4444;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  display: block;
 }
 </style>

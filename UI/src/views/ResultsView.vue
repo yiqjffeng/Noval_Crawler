@@ -231,28 +231,8 @@
           </div>
         </div>
         
-        <!-- 加载更多 -->
-        <div 
-          v-if="hasMoreResults" 
-          ref="loadTriggerRef"
-          class="load-more-section"
-        >
-          <div v-if="isLoadingMore" class="loading-indicator">
-            <LoadingSpinner size="small" text="加载更多中..." />
-          </div>
-          <BaseButton
-            v-else
-            variant="ghost"
-            size="large"
-            @click="loadMoreResults"
-            class="load-more-button"
-          >
-            加载更多 ({{ remainingCount }}条)
-          </BaseButton>
-        </div>
-        
-        <!-- 无更多数据提示 -->
-        <div v-if="!hasMoreResults && displayedResults.length > 0" class="no-more-hint">
+        <!-- 结果总数提示 -->
+        <div v-if="displayedResults.length > 0" class="results-summary">
           已显示全部 {{ searchResults.length }} 条结果
         </div>
       </div>
@@ -268,7 +248,7 @@ import { BaseButton, BaseCard } from '@/components/common';
 import { LoadingSpinner } from '@/components/loading';
 import { truncateText } from '@/utils/format';
 import { staggerAnimation } from '@/utils/animation';
-import { useSearchResultsLazy, useLazyLoad } from '@/composables';
+
 import type { BookItem } from '@/types';
 
 // Icons
@@ -292,7 +272,7 @@ const bookStore = useBookStore();
 const searchInputRef = ref<HTMLInputElement>();
 const resultsGridRef = ref<HTMLElement>();
 const bookCardRefs = ref<HTMLElement[]>([]);
-const loadTriggerRef = ref<HTMLElement>();
+
 
 // 响应式数据
 const showSearchBox = ref(false);
@@ -301,21 +281,14 @@ const viewMode = ref<'grid' | 'list'>('grid');
 const sortBy = ref('default');
 const searchTime = ref<number | null>(null);
 
-// 懒加载功能
-const {
-  displayedItems: displayedResults,
-  isLoading: isLoadingMore,
-  hasMore: hasMoreResults,
-  remainingCount,
-  loadMore,
-  setSearchResults,
-  clearResults
-} = useSearchResultsLazy<BookItem>({
-  initialPageSize: 20,
-  incrementSize: 20,
-  loadDelay: 300,
-  enableLogs: true
-});
+// 直接显示所有搜索结果，为每个结果添加索引信息
+const displayedResults = computed(() => 
+  searchResults.value.map((book, index) => ({
+    ...book,
+    index,
+    searchKeyword: currentKeyword.value
+  }))
+);
 
 // 计算属性
 const currentKeyword = computed(() => searchStore.currentKeyword);
@@ -340,9 +313,6 @@ const handleNewSearch = async () => {
     searchTime.value = (Date.now() - startTime) / 1000;
     newSearchKeyword.value = '';
     
-    // 更新懒加载数据
-    setSearchResults(searchResults.value);
-    
     // 重新动画显示结果
     nextTick(() => {
       animateResults();
@@ -358,18 +328,28 @@ const retrySearch = async () => {
     await searchStore.retrySearch();
     searchTime.value = (Date.now() - startTime) / 1000;
     
-    // 更新懒加载数据
-    setSearchResults(searchResults.value);
+
   } catch (error) {
     console.error('重试搜索失败:', error);
   }
 };
 
 const selectBook = (book: BookItem) => {
-  bookStore.setCurrentBook(book);
+  // 设置增强的书籍信息，包含索引和搜索关键词
+  const enhancedBook = {
+    ...book,
+    index: book.index || 0,
+    searchKeyword: book.searchKeyword || currentKeyword.value
+  };
+  
+  bookStore.setCurrentBook(enhancedBook);
+  
+  // 使用索引作为路由参数，确保索引从0开始
   router.push({ 
     name: 'BookDetail',
-    params: { id: encodeURIComponent(book.articlename) }
+    params: { 
+      id: (book.index !== undefined ? book.index : 0).toString()
+    }
   });
 };
 
@@ -393,27 +373,13 @@ const applySorting = () => {
   
   searchStore.sortResults(sortFn);
   
-  // 更新懒加载数据
-  setSearchResults(searchResults.value);
-  
   // 重新动画
   nextTick(() => {
     animateResults();
   });
 };
 
-const loadMoreResults = async () => {
-  await loadMore();
-  
-  // 动画新加载的项目
-  nextTick(() => {
-    const startIndex = displayedResults.value.length - 20;
-    const newItems = bookCardRefs.value.slice(Math.max(0, startIndex));
-    if (newItems.length > 0) {
-      staggerAnimation(newItems, { stagger: 0.1 });
-    }
-  });
-};
+
 
 const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement;
@@ -431,15 +397,7 @@ const animateResults = () => {
   }
 };
 
-// 懒加载触发器
-useLazyLoad(
-  loadTriggerRef,
-  loadMoreResults,
-  {
-    threshold: 0.1,
-    rootMargin: '200px'
-  }
-);
+
 
 // 生命周期
 onMounted(async () => {
@@ -456,15 +414,13 @@ onMounted(async () => {
     }
   }
   
-  // 初始化懒加载数据
+  // 初始化搜索结果
   if (searchResults.value.length > 0) {
-    setSearchResults(searchResults.value);
+    // 页面加载完成后播放动画
+    nextTick(() => {
+      animateResults();
+    });
   }
-  
-  // 页面加载完成后播放动画
-  nextTick(() => {
-    animateResults();
-  });
   
   // 自动聚焦新搜索框
   watch(() => showSearchBox.value, (show) => {
@@ -900,29 +856,15 @@ watch(() => viewMode.value, () => {
   }
 }
 
-.load-more-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 2rem;
-  gap: 1rem;
-}
-
-.loading-indicator {
-  padding: 1rem;
-}
-
-.load-more-button {
-  min-width: 200px;
-}
-
-.no-more-hint {
+.results-summary {
   text-align: center;
   color: #64748b;
   font-size: 0.875rem;
-  padding: 2rem;
+  padding: 1.5rem;
   border-top: 1px solid rgba(51, 65, 85, 0.3);
   margin-top: 1rem;
+  background: rgba(30, 41, 59, 0.3);
+  border-radius: 0.5rem;
 }
 
 // 响应式设计

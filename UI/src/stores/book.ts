@@ -8,7 +8,8 @@ import type {
   CatalogData, 
   Chapter,
   LoadingState,
-  ErrorState 
+  ErrorState,
+  DataRestoreResult
 } from '@/types';
 
 const STORAGE_KEYS = {
@@ -55,6 +56,8 @@ export const useBookStore = defineStore('book', () => {
   const setCurrentBook = (book: BookItem): void => {
     const bookDetail: BookDetail = {
       ...book,
+      novel_id: book.index?.toString() || '0',
+      searchKeyword: book.searchKeyword || '',
       catalog: undefined,
       isLoadingCatalog: false
     };
@@ -114,7 +117,9 @@ export const useBookStore = defineStore('book', () => {
 
   const retryLoadCatalog = async (): Promise<void> => {
     if (currentBook.value?.novel_id) {
-      await loadBookCatalog(parseInt(currentBook.value.novel_id));
+      const novelId = parseInt(currentBook.value.novel_id);
+      const apiNovelId = novelId + 1; // 前端索引从0开始，API索引从1开始
+      await loadBookCatalog(apiNovelId);
     }
   };
 
@@ -173,6 +178,40 @@ export const useBookStore = defineStore('book', () => {
     return bookCatalog.value.chapters.slice(start, end + 1);
   };
 
+  // 数据恢复相关
+  const restoreBookFromCache = (): DataRestoreResult => {
+    try {
+      const cachedBook = sessionStorage.get<BookDetail>(STORAGE_KEYS.CURRENT_BOOK);
+      if (cachedBook) {
+        currentBook.value = cachedBook;
+        return {
+          success: true,
+          data: cachedBook,
+          message: '成功从缓存恢复书籍信息'
+        };
+      }
+    } catch (error) {
+      console.error('从缓存恢复书籍信息失败:', error);
+    }
+    
+    return {
+      success: false,
+      message: '缓存中没有书籍信息'
+    };
+  };
+
+  const validateBookData = (book: BookItem): boolean => {
+    return !!(book && book.articlename && book.author && book.url_list);
+  };
+
+  const createErrorState = (code: string, message: string, details?: any): void => {
+    setError({
+      code,
+      message,
+      details
+    });
+  };
+
   // 重置状态
   const reset = (): void => {
     currentBook.value = null;
@@ -218,6 +257,11 @@ export const useBookStore = defineStore('book', () => {
     findChapterByTitle,
     getChapterRange,
     reset,
-    resetCatalog
+    resetCatalog,
+    
+    // 数据恢复方法
+    restoreBookFromCache,
+    validateBookData,
+    createErrorState
   };
 });

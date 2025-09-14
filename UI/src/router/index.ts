@@ -32,6 +32,16 @@ const router = createRouter({
       }
     },
     {
+      path: '/read/:bookId/:chapterId',
+      name: 'ChapterRead',
+      component: () => import('@/views/ChapterReadView.vue'),
+      props: true,
+      meta: {
+        title: '章节阅读',
+        transition: 'slideLeft'
+      }
+    },
+    {
       path: '/download/:id?',
       name: 'Download',
       component: () => import('@/views/DownloadView.vue'),

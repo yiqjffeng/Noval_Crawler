@@ -7,6 +7,9 @@ export interface BookItem {
   articlename: string;
   author: string;
   intro: string;
+  // 新增字段
+  index?: number;          // 在搜索结果中的索引位置
+  searchKeyword?: string;  // 搜索关键词，用于API调用
 }
 
 // 搜索相关类型
@@ -55,6 +58,7 @@ export interface CatalogResponse extends ApiResponse<CatalogData> {
 // 书籍详情（用于前端展示）
 export interface BookDetail extends BookItem {
   novel_id?: string;
+  searchKeyword?: string;  // 搜索关键词，用于目录API调用
   total_chapters?: number;
   catalog?: CatalogData;
   isLoadingCatalog?: boolean;
@@ -65,4 +69,25 @@ export interface SearchHistoryItem {
   keyword: string;
   timestamp: number;
   resultsCount: number;
+}
+
+// 错误状态
+export interface ErrorState {
+  hasError: boolean;
+  errorMessage: string;
+  errorType: 'network' | 'data' | 'not_found' | 'unknown';
+}
+
+// 数据恢复结果
+export interface DataRestoreResult {
+  success: boolean;
+  data?: BookItem;
+  message?: string;
+}
+
+// 缓存的搜索结果
+export interface CachedSearchResult {
+  results: BookItem[] | null;
+  keyword: string;
+  timestamp: number;
 }

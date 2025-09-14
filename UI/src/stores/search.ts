@@ -7,12 +7,14 @@ import type {
   SearchRequest, 
   SearchHistoryItem,
   LoadingState,
-  ErrorState 
+  ErrorState,
+  CachedSearchResult 
 } from '@/types';
 
 const STORAGE_KEYS = {
   SEARCH_HISTORY: 'book_crawler_search_history',
-  RECENT_SEARCHES: 'book_crawler_recent_searches'
+  RECENT_SEARCHES: 'book_crawler_recent_searches',
+  SEARCH_RESULTS: 'book_crawler_search_results'
 };
 
 export const useSearchStore = defineStore('search', () => {
@@ -73,8 +75,11 @@ export const useSearchStore = defineStore('search', () => {
       if (response.status === 'success') {
         searchResults.value = response.data || [];
         
-        // 添加到搜索历史
+  // 添加到搜索历史
         addToHistory(currentKeyword.value, searchResults.value.length);
+        
+        // 持久化搜索结果
+        persistSearchResults();
         
         // 清除错误状态
         clearError();
@@ -195,13 +200,54 @@ export const useSearchStore = defineStore('search', () => {
     searchResults.value.sort(sortFn);
   };
 
-  // 重置状态
+  // 搜索结果持久化
+  const persistSearchResults = (): void => {
+    const cachedData: CachedSearchResult = {
+      results: searchResults.value,
+      keyword: currentKeyword.value,
+      timestamp: Date.now()
+    };
+    storage.set(STORAGE_KEYS.SEARCH_RESULTS, cachedData);
+  };
+
+  // 恢复搜索结果
+  const restoreSearchResults = (): boolean => {
+    try {
+      const cachedData = storage.get<CachedSearchResult>(STORAGE_KEYS.SEARCH_RESULTS);
+      if (cachedData && cachedData.results) {
+        // 检查数据是否过期（30分钟有效期）
+        const thirtyMinutes = 30 * 60 * 1000;
+        if (Date.now() - cachedData.timestamp < thirtyMinutes) {
+          searchResults.value = cachedData.results;
+          currentKeyword.value = cachedData.keyword;
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error('恢复搜索结果失败:', error);
+    }
+    return false;
+  };
+
+  // 根据ID查找书籍
+  const findBookById = (id: number): BookItem | null => {
+    if (searchResults.value && id >= 0 && id < searchResults.value.length) {
+      return searchResults.value[id];
+    }
+    return null;
+  };
+
+  // 清理缓存的搜索结果
+  const clearCachedResults = (): void => {
+    storage.remove(STORAGE_KEYS.SEARCH_RESULTS);
+  };
   const reset = (): void => {
     searchResults.value = [];
     currentKeyword.value = '';
     searchSuggestions.value = [];
     clearError();
     setLoading(false);
+    clearCachedResults();
   };
 
   return {
@@ -234,6 +280,12 @@ export const useSearchStore = defineStore('search', () => {
     filterResults,
     filterByAuthor,
     sortResults,
-    reset
+    reset,
+    
+    // 新增的数据恢复方法
+    persistSearchResults,
+    restoreSearchResults,
+    findBookById,
+    clearCachedResults
   };
 });

@@ -36,13 +36,13 @@ class ContentSpider(scrapy.Spider):
     name = "content"
     allowed_domains = SUPPORTED_DOMAINS.copy()
 
-    def __init__(self, start_idx=0, end_idx=-1, task_id=None, keyword : str = None, book_name: str = None, **kwargs):
+    def __init__(self, start_idx=1, end_idx=-1, task_id=None, keyword : str = None, book_name: str = None, **kwargs):
         super().__init__(**kwargs)
         self.failed_chapters = []
         self.catalog = {}
         self.keyword = keyword
         self.book_name = book_name or keyword
-        self.start_idx = (int(start_idx) if start_idx else 1) - 1
+        self.start_idx = int(start_idx) - 1
         self.end_idx = int(end_idx) if end_idx and end_idx != '-1' else -1
         self.task_id = task_id or "default"
         self.total_chapters = 0
