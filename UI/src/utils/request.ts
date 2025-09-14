@@ -21,7 +21,7 @@ const DEFAULT_CONFIG: ApiConfig = {
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: false,
+  // withCredentials: false,
 };
 
 // 默认重试配置
@@ -55,7 +55,7 @@ class HttpClient {
     this.instance.interceptors.request.use(
       (config) => {
         // 添加请求时间戳
-        config.metadata = { startTime: Date.now() };
+        (config as any).metadata = { startTime: Date.now() };
         
         // 添加请求ID
         config.headers['X-Request-ID'] = this.generateRequestId();
@@ -76,7 +76,7 @@ class HttpClient {
     // 响应拦截器
     this.instance.interceptors.response.use(
       (response) => {
-        const duration = Date.now() - (response.config.metadata?.startTime || 0);
+        const duration = Date.now() - ((response.config as any).metadata?.startTime || 0);
         
         console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, {
           status: response.status,

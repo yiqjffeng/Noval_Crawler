@@ -2,13 +2,15 @@
   <div class="detail-view">
     <div class="detail-container">
       <div class="detail-header">
-        <BaseButton variant="ghost" @click="goBack">
+        <BaseButton variant="ghost"
+                    size="medium"
+                    @click="goBack">
           <ArrowLeftIcon class="w-5 h-5 mr-2" />
           返回
         </BaseButton>
         <h1 class="detail-title">书籍详情</h1>
       </div>
-      
+
       <!-- 错误状态 -->
       <div v-if="errorState.hasError" class="error-section">
         <div class="error-message">
@@ -18,7 +20,7 @@
           <div class="error-content">
             <h3 class="error-title">无法加载书籍详情</h3>
             <p class="error-text">{{ errorState.errorMessage }}</p>
-            
+
             <!-- 根据错误类型显示不同的建议 -->
             <div class="error-suggestions" v-if="errorState.errorType === 'data_missing'">
               <p class="suggestions-title">可能的解决方案：</p>
@@ -28,7 +30,7 @@
                 <li>尝试刷新页面</li>
               </ul>
             </div>
-            
+
             <div class="error-suggestions" v-else-if="errorState.errorType === 'catalog_load_error'">
               <p class="suggestions-title">可能的解决方案：</p>
               <ul class="suggestions-list">
@@ -37,7 +39,7 @@
                 <li>尝试重新加载</li>
               </ul>
             </div>
-            
+
             <div class="error-suggestions" v-else-if="errorState.errorType === 'invalid_data'">
               <p class="suggestions-title">可能的解决方案：</p>
               <ul class="suggestions-list">
@@ -46,10 +48,10 @@
                 <li>尝试刷新页面</li>
               </ul>
             </div>
-            
+
             <div class="error-actions">
-              <BaseButton 
-                variant="primary" 
+              <BaseButton
+                variant="primary"
                 @click="retryLoadData"
                 :loading="isLoadingCatalog"
               >
@@ -65,9 +67,9 @@
           </div>
         </div>
       </div>
-      
+
       <WizardLoader v-else-if="isLoadingCatalog" text="正在加载目录..." :fullscreen="false" />
-      
+
       <div v-else-if="currentBook" class="book-detail">
         <div class="book-header">
           <img :src="currentBook.url_img" :alt="currentBook.articlename" class="book-cover" />
@@ -82,21 +84,21 @@
             </div>
           </div>
         </div>
-        
+
         <div v-if="bookCatalog" class="catalog-section">
           <div class="catalog-header">
             <h3>目录 ({{ chapterCount }} 章)</h3>
-            
+
             <!-- 章节导航 -->
             <div class="chapter-nav">
               <div class="nav-info">
                 共 {{ chapterCount }} 章
               </div>
               <div class="nav-jump">
-                <input 
+                <input
                   v-model.number="jumpTarget"
-                  type="number" 
-                  :min="1" 
+                  type="number"
+                  :min="1"
                   :max="chapterCount"
                   placeholder="跳转到章节"
                   @keydown.enter="jumpToChapter"
@@ -108,7 +110,7 @@
               </div>
             </div>
           </div>
-          
+
           <!-- 章节列表 -->
           <div class="chapter-scroll-container" ref="scrollContainer">
             <ChapterLink
@@ -127,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, reactive } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useBookStore, useSearchStore } from '@/stores';
 import { BaseButton } from '@/components/common';
@@ -146,7 +148,7 @@ const scrollContainer = ref<HTMLElement>();
 const jumpTarget = ref<number>();
 
 // 错误状态
-const errorState = ref<ErrorState>({
+const errorState = reactive({
   hasError: false,
   errorMessage: '',
   errorType: 'unknown'
@@ -173,14 +175,14 @@ const validateChapterData = (catalog: any): boolean => {
     console.error('章节数据格式错误');
     return false;
   }
-  
+
   const expectedCount = catalog.novel_info?.total_chapters || 0;
   const actualCount = catalog.chapters.length;
-  
+
   if (expectedCount > 0 && expectedCount !== actualCount) {
     console.warn(`章节数量不匹配: 预期${expectedCount}, 实际${actualCount}`);
   }
-  
+
   return catalog.chapters.length > 0;
 };
 
@@ -190,7 +192,7 @@ const validateBookData = (book: any): boolean => {
     console.error('书籍数据为空');
     return false;
   }
-  
+
   const requiredFields = ['articlename', 'author', 'url_list'];
   for (const field of requiredFields) {
     if (!book[field]) {
@@ -198,27 +200,27 @@ const validateBookData = (book: any): boolean => {
       return false;
     }
   }
-  
+
   return true;
 };
 // 数据恢复机制优化
 const restoreBookFromId = async (id: number): Promise<boolean> => {
   try {
     console.log(`尝试恢复书籍数据，前端ID: ${id}`);
-    
+
     // 策略1: 从缓存恢复
     const cacheResult = bookStore.restoreBookFromCache();
     if (cacheResult.success && cacheResult.data) {
       console.log('从缓存恢复书籍信息成功');
       // 验证索引是否匹配
-      const cachedId = cacheResult.data.index ?? parseInt(cacheResult.data.novel_id || '0');
+      const cachedId = cacheResult.data.index ?? parseInt((cacheResult.data as any).novel_id || '0');
       if (cachedId === id) {
         return true;
       } else {
         console.warn(`缓存的书籍ID(${cachedId})与当前ID(${id})不匹配`);
       }
     }
-    
+
     // 策略2: 从搜索结果恢复
     let searchResult = searchStore.findBookById(id);
     if (!searchResult) {
@@ -230,19 +232,19 @@ const restoreBookFromId = async (id: number): Promise<boolean> => {
         searchResult = searchStore.findBookById(id);
       }
     }
-    
+
     if (searchResult) {
       const bookWithIndex = {
         ...searchResult,
         index: id,
         searchKeyword: searchStore.currentKeyword
       };
-      
+
       bookStore.setCurrentBook(bookWithIndex);
       console.log('从搜索结果恢复书籍信息成功');
       return true;
     }
-    
+
     console.warn('所有恢复策略都失败了');
     return false;
   } catch (error) {
@@ -252,35 +254,31 @@ const restoreBookFromId = async (id: number): Promise<boolean> => {
 };
 
 // 设置错误状态
-const setError = (message: string, type: ErrorState['errorType'] = 'unknown') => {
-  errorState.value = {
-    hasError: true,
-    errorMessage: message,
-    errorType: type
-  };
+const setError = (message: string, type: 'data_missing' | 'catalog_load_error' | 'invalid_data' | 'unknown' = 'unknown') => {
+  errorState.hasError = true
+  errorState.errorMessage = message
+  errorState.errorType = type
 };
 
 // 清除错误状态
 const clearError = () => {
-  errorState.value = {
-    hasError: false,
-    errorMessage: '',
-    errorType: 'unknown'
-  };
+  errorState.hasError = false
+  errorState.errorMessage = ''
+  errorState.errorType = 'unknown'
 };
 
 // 重试机制
 const retryLoadData = async () => {
   console.log('用户触发重试加载');
   clearError();
-  
+
   // 重新尝试数据恢复
   const restored = await restoreBookFromId(bookId.value);
   if (!restored) {
     setError('数据恢复失败，请返回搜索页面重新选择书籍', 'data_missing');
     return;
   }
-  
+
   // 重新加载目录
   try {
     const apiNovelId = bookId.value + 1;
@@ -307,7 +305,7 @@ const selectChapter = (chapter: Chapter, index: number) => {
 
 const handleChapterClick = (chapter: Chapter, index: number) => {
   console.log(`点击章节: ${chapter.title} (索引: ${index})`);
-  
+
   // 跳转到章节阅读页面
   router.push({
     name: 'ChapterRead',
@@ -335,11 +333,11 @@ const jumpToChapter = () => {
       const chapterElements = scrollContainer.value.querySelectorAll('.chapter-link-wrapper');
       if (chapterElements[targetIndex]) {
         // 平滑滚动到目标章节
-        chapterElements[targetIndex].scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center' 
+        chapterElements[targetIndex].scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
         });
-        
+
         // 高亮显示目标章节
         const chapterLink = chapterElements[targetIndex].querySelector('.chapter-link');
         if (chapterLink) {
@@ -354,18 +352,22 @@ const jumpToChapter = () => {
 };
 
 const goBack = () => {
-  router.go(-1);
+  if (window.history.length > 1) {
+    router.back();
+  } else {
+    router.push({ name: 'Search' });
+  }
 };
 
 // 生命周期钩子 - 页面加载时的初始化逻辑
 onMounted(async () => {
   console.log('DetailView页面加载，bookId:', bookId.value);
   clearError();
-  
+
   // 检查是否有当前书籍信息
   if (!currentBook.value) {
     console.log('没有当前书籍信息，尝试恢复数据...');
-    
+
     // 尝试恢复书籍数据
     const restored = await restoreBookFromId(bookId.value);
     if (!restored) {
@@ -374,20 +376,20 @@ onMounted(async () => {
       return;
     }
   }
-  
+
   // 验证书籍数据完整性
   if (!validateBookData(currentBook.value)) {
     console.error('书籍数据不完整');
     setError('书籍数据异常，请重新选择', 'invalid_data');
     return;
   }
-  
+
   // 如果已有目录数据且数据有效，不需要重新加载
   if (bookCatalog.value && validateChapterData(bookCatalog.value)) {
     console.log('目录数据已存在且有效，跳过加载');
     return;
   }
-  
+
   // 加载目录
   try {
     console.log('开始加载目录...');
@@ -522,11 +524,11 @@ onMounted(async () => {
   padding: 0.375rem 0.75rem;
   color: #f8fafc;
   font-size: 0.875rem;
-  
+
   &::placeholder {
     color: #64748b;
   }
-  
+
   &:focus {
     outline: none;
     border-color: #3b82f6;
@@ -540,21 +542,21 @@ onMounted(async () => {
   border-radius: 0.5rem;
   overflow-y: auto;
   max-height: none; /* 移除高度限制，显示所有章节 */
-  
+
   /* 滚动条样式 */
   &::-webkit-scrollbar {
     width: 8px;
   }
-  
+
   &::-webkit-scrollbar-track {
     background: rgba(51, 65, 85, 0.3);
     border-radius: 4px;
   }
-  
+
   &::-webkit-scrollbar-thumb {
     background: rgba(100, 116, 139, 0.6);
     border-radius: 4px;
-    
+
     &:hover {
       background: rgba(100, 116, 139, 0.8);
     }
@@ -665,7 +667,7 @@ onMounted(async () => {
   font-size: 0.875rem;
   margin: 0;
   padding-left: 1.25rem;
-  
+
   li {
     margin-bottom: 0.25rem;
     line-height: 1.5;

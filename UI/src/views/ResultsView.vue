@@ -126,7 +126,7 @@
           </div>  
           <BaseButton
             variant="primary"
-            size="large"
+            size="medium"
             @click="showSearchBox = true"
             class="new-search-button"
           >
@@ -301,7 +301,11 @@ const errorState = computed(() => searchStore.errorState);
 
 // 方法
 const goBack = () => {
-  router.push({ name: 'Search' });
+  if (window.history.length > 1) {
+    router.back();
+  } else {
+    router.push({ name: 'Search' });
+  }
 };
 
 const handleNewSearch = async () => {

@@ -34,7 +34,7 @@ export const useSearchStore = defineStore('search', () => {
 
   // 搜索历史
   const searchHistory = ref<SearchHistoryItem[]>(
-    storage.get<SearchHistoryItem[]>(STORAGE_KEYS.SEARCH_HISTORY, [])
+    storage.get<SearchHistoryItem[]>(STORAGE_KEYS.SEARCH_HISTORY, []) || []
   );
 
   // 计算属性

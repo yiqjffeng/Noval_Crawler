@@ -41,7 +41,10 @@ export const useDownloadStore = defineStore('download', () => {
   const downloadTasks = ref<Map<string, DownloadStatus>>(new Map());
   const currentTaskId = ref<string | null>(null);
   const downloadConfig = ref<DownloadConfig>(
-    storage.get<DownloadConfig>(STORAGE_KEYS.DOWNLOAD_CONFIG, DEFAULT_CONFIG)
+    (() => {
+      const stored = storage.get<DownloadConfig>(STORAGE_KEYS.DOWNLOAD_CONFIG);
+      return stored || DEFAULT_CONFIG;
+    })()
   );
   
   const loadingState = ref<LoadingState>({
@@ -56,7 +59,7 @@ export const useDownloadStore = defineStore('download', () => {
   });
 
   // 轮询定时器
-  const pollTimers = ref<Map<string, NodeJS.Timeout>>(new Map());
+  const pollTimers = ref<Map<string, number>>(new Map());
 
   // 计算属性
   const allTasks = computed(() => Array.from(downloadTasks.value.values()));
@@ -186,13 +189,14 @@ export const useDownloadStore = defineStore('download', () => {
         // 清空现有任务
         downloadTasks.value.clear();
         
-        // 添加新任务
+        // 添加新任务，使用标准化的进度数据
         response.data.forEach(task => {
-          downloadTasks.value.set(task.task_id, task);
+          const normalizedTask = normalizeTaskProgress(task);
+          downloadTasks.value.set(normalizedTask.task_id, normalizedTask);
           
           // 为运行中的任务启动轮询
-          if (task.status === 'running') {
-            startPolling(task.task_id);
+          if (normalizedTask.status === 'running') {
+            startPolling(normalizedTask.task_id);
           }
         });
         
@@ -217,10 +221,12 @@ export const useDownloadStore = defineStore('download', () => {
       const response = await getDownloadStatus(taskId);
       
       if (response.status === 'success' && response.data) {
-        downloadTasks.value.set(taskId, response.data);
+        // 标准化任务进度数据
+        const normalizedTask = normalizeTaskProgress(response.data);
+        downloadTasks.value.set(taskId, normalizedTask);
         
         // 如果任务已完成或失败，停止轮询
-        if (['completed', 'failed', 'stopped'].includes(response.data.status)) {
+        if (['completed', 'failed', 'stopped'].includes(normalizedTask.status)) {
           stopPolling(taskId);
         }
       }
@@ -386,6 +392,27 @@ export const useDownloadStore = defineStore('download', () => {
     }
   };
 
+  // 标准化任务进度数据
+  const normalizeTaskProgress = (task: DownloadStatus): DownloadStatus => {
+    const normalizedTask = { ...task };
+    
+    // 确保已完成任务的百分比为100
+    if (task.status === 'completed') {
+      normalizedTask.percentage = 100;
+      normalizedTask.current = normalizedTask.total;
+    }
+    
+    // 重新计算百分比
+    if (task.current > 0 && task.total > 0 && !task.percentage) {
+      normalizedTask.percentage = Math.round((task.current / task.total) * 100);
+    }
+    
+    // 确保百分比在合理范围内
+    normalizedTask.percentage = Math.max(0, Math.min(normalizedTask.percentage || 0, 100));
+    
+    return normalizedTask;
+  };
+
   const setLoading = (isLoading: boolean, loadingText?: string): void => {
     loadingState.value = {
       isLoading,
@@ -446,7 +473,8 @@ export const useDownloadStore = defineStore('download', () => {
     hasError,
     hasActiveTasks,
     
-    // Actions
+    // 添加新任务，使用标准化的进度数据
+    normalizeTaskProgress,
     startDownload,
     stopDownloadTask,
     loadAllTasks,

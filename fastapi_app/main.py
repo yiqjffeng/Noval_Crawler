@@ -14,13 +14,14 @@ from typing import List, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import sys
-from fastapi_app.model import SearchRequest, CatalogRequest,DownloadRequest,DownloadMode
 # 添加项目根目录到Python路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 添加项目根目录到路径
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+from fastapi_app.model import SearchRequest, CatalogRequest,DownloadRequest,DownloadMode
 
 from config import (
     TEMP_OUTPUT_DIRECTORY,

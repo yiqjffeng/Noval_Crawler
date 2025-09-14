@@ -2,17 +2,23 @@
   <div class="download-view">
     <div class="download-container">
       <div class="download-header">
-        <BaseButton variant="ghost" @click="goBack">
-          <ArrowLeftIcon class="w-5 h-5 mr-2" />
-          返回
-        </BaseButton>
+        <div class="header-nav">
+          <BaseButton variant="ghost" size="medium" @click="goBack" class="back-button">
+            <ArrowLeftIcon class="back-icon" />
+            返回上页
+          </BaseButton>
+          <BaseButton variant="primary" size="medium" @click="goToSearch" class="search-button" style="margin-left: auto;">
+            <MagnifyingGlassIcon class="search-icon" />
+            返回搜索
+          </BaseButton>
+        </div>
         <h1 class="download-title">下载配置</h1>
       </div>
       
       <div class="download-form">
         <BaseCard>
           <div class="form-section">
-            <h3>基本设置</h3>
+            <h3>{{ currentBook?.articlename || '书籍下载' }}</h3>
             <div class="form-grid">
               <div class="form-group">
                 <label>文件格式</label>
@@ -68,7 +74,7 @@
             <div class="form-actions">
               <BaseButton 
                 variant="primary" 
-                size="large"
+                size="medium"
                 :loading="isDownloading"
                 :disabled="isStartChapterInvalid || isEndChapterInvalid || isRangeInvalid"
                 @click="startDownload"
@@ -82,15 +88,25 @@
         <!-- 下载进度 -->
         <div v-if="currentTask" class="progress-section">
           <BaseCard>
-            <h3>下载进度</h3>
+            <div class="progress-header">
+              <h3>下载进度</h3>
+              <div class="book-info">
+                <BookOpenIcon class="book-icon" />
+                <span class="book-name">{{ currentTask.book_name || downloadConfig.fileName }}</span>
+              </div>
+            </div>
             <BaseProgress 
-              :value="currentTask.percentage" 
+              :value="getTaskProgress(currentTask)" 
               :show-text="true"
-              size="large"
+              size="medium"
+              :variant="getProgressVariant(currentTask.status)"
             />
             <div class="progress-info">
               <p>当前进度: {{ currentTask.current }} / {{ currentTask.total }}</p>
               <p>状态: {{ getStatusText(currentTask.status) }}</p>
+              <p v-if="currentTask.failed_chapters.length > 0">
+                失败章节: {{ currentTask.failed_chapters.length }} 个
+              </p>
             </div>
           </BaseCard>
         </div>
@@ -104,7 +120,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDownloadStore, useBookStore } from '@/stores';
 import { BaseButton, BaseCard, BaseProgress } from '@/components/common';
-import { ArrowLeftIcon } from '@heroicons/vue/24/outline';
+import { ArrowLeftIcon, MagnifyingGlassIcon, BookOpenIcon } from '@heroicons/vue/24/outline';
 import type { DownloadTaskStatus } from '@/types';
 
 const router = useRouter();
@@ -143,6 +159,28 @@ const validateRange = () => {
   isRangeInvalid.value = downloadConfig.value.endChapter < downloadConfig.value.startChapter;
 };
 
+const goBack = () => {
+  // 优先使用浏览器历史记录
+  if (window.history.length > 1) {
+    router.back();
+    return;
+  }
+  
+  // 如果有当前书籍，返回详情页
+  if (currentBook.value?.index) {
+    router.push({ name: 'BookDetail', params: { id: currentBook.value.index } });
+    return;
+  }
+  
+  // 默认返回搜索页
+  router.push({ name: 'Search' });
+};
+
+// 直接返回搜索页
+const goToSearch = () => {
+  router.push({ name: 'Search' });
+};
+
 const startDownload = async () => {
   if (!currentBook.value) return;
   
@@ -165,6 +203,36 @@ const startDownload = async () => {
   };
   
   await downloadStore.startDownload(params);
+};
+
+// 计算任务进度百分比
+const getTaskProgress = (task: any): number => {
+  if (task.status === 'completed') {
+    return 100;
+  }
+  
+  if (task.percentage > 0) {
+    return Math.min(task.percentage, 100);
+  }
+  
+  if (task.current > 0 && task.total > 0) {
+    return Math.min(Math.round((task.current / task.total) * 100), 100);
+  }
+  
+  return 0;
+};
+
+// 进度条颜色变体
+const getProgressVariant = (status: DownloadTaskStatus): 'primary' | 'success' | 'warning' | 'error' | 'info' => {
+  const variantMap: Record<DownloadTaskStatus, 'primary' | 'success' | 'warning' | 'error' | 'info'> = {
+    'completed': 'success',
+    'running': 'primary', 
+    'failed': 'error',
+    'stopped': 'warning',
+    'pending': 'info',
+    'paused': 'warning'
+  };
+  return variantMap[status] || 'primary';
 };
 
 const getStatusText = (status: DownloadTaskStatus): string => {
@@ -232,9 +300,35 @@ watch(maxChapter, (newMaxChapter) => {
 
 .download-header {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 1rem;
   margin-bottom: 2rem;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.back-button {
+  flex-shrink: 0;
+}
+
+.back-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: 0.5rem;
+}
+
+.search-button {
+  flex-shrink: 0;
+}
+
+.search-icon {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.5rem;
 }
 
 .download-title {
@@ -303,6 +397,40 @@ watch(maxChapter, (newMaxChapter) => {
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0 0 1rem 0;
+}
+
+.progress-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.progress-header h3 {
+  margin: 0;
+}
+
+.book-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 0.5rem;
+  border-left: 3px solid #3b82f6;
+}
+
+.book-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #3b82f6;
+  flex-shrink: 0;
+}
+
+.book-name {
+  color: #f8fafc;
+  font-weight: 500;
+  font-size: 0.875rem;
 }
 
 .progress-info {

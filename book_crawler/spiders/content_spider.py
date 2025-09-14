@@ -50,7 +50,7 @@ class ContentSpider(scrapy.Spider):
         self.end_idx = int(end_idx) if end_idx and end_idx != '-1' else -1
         self.task_id = task_id or "default"
         self.total_chapters = 0
-        self.downloaded_chapters = 0
+        self.downloaded_chapters = 1
 
         # 进度文件路径
         self.progress_file = f"{TEMP_OUTPUT_DIRECTORY}/progress_{self.task_id}.json"

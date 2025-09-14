@@ -4,69 +4,69 @@
       <!-- 页面头部 -->
       <div class="read-header">
         <div class="header-left">
-          <BaseButton @click="goBack" variant="ghost">
+          <BaseButton @click="goBack" size="medium" variant="ghost">
             <ArrowLeftIcon class="w-5 h-5 mr-2" />
             返回目录
           </BaseButton>
         </div>
-        
+
         <div class="chapter-info">
           <h1 class="chapter-title">{{ currentChapter?.title || '加载中...' }}</h1>
           <p class="book-info">
             <span v-if="bookInfo">{{ bookInfo.novel_title }} - {{ bookInfo.author }}</span>
           </p>
         </div>
-        
+
         <div class="header-right">
-          <BaseButton @click="openOriginalUrl" variant="primary" :disabled="!chapterUrl">
+          <BaseButton @click="openOriginalUrl" variant="primary" size="medium" :disabled="!chapterUrl">
             <ArrowTopRightOnSquareIcon class="w-5 h-5 mr-2" />
             原网站阅读
           </BaseButton>
         </div>
       </div>
-      
+
       <!-- 章节导航 -->
       <div class="chapter-navigation">
-        <BaseButton 
-          @click="previousChapter" 
+        <BaseButton
+          @click="previousChapter"
           :disabled="!hasPreviousChapter"
+          size="medium"
           variant="ghost"
-          size="large"
         >
           <ChevronLeftIcon class="w-5 h-5 mr-2" />
           上一章
         </BaseButton>
-        
+
         <div class="nav-info">
           <span class="chapter-number">第 {{ currentChapterIndex + 1 }} 章</span>
           <span class="total-chapters">共 {{ totalChapters }} 章</span>
         </div>
-        
-        <BaseButton 
-          @click="nextChapter" 
+
+        <BaseButton
+          @click="nextChapter"
           :disabled="!hasNextChapter"
           variant="ghost"
-          size="large"
+          size="medium"
         >
           下一章
           <ChevronRightIcon class="w-5 h-5 ml-2" />
         </BaseButton>
       </div>
-      
+
       <!-- 阅读内容区域 -->
       <div class="read-content">
         <div class="content-placeholder">
           <div class="placeholder-icon">
             <BookOpenIcon class="icon" />
           </div>
-          
+
           <h3 class="placeholder-title">点击"原网站阅读"开始阅读</h3>
-          
+
           <div class="placeholder-info">
             <p>由于版权保护，我们不提供章节内容的直接显示。</p>
-            <p>请点击上方的"原网站阅读"按钮前往原始网站阅读此章节。</p>
+            <p>请点击下方的"原网站阅读"按钮前往原始网站阅读此章节。</p>
           </div>
-          
+
           <div class="chapter-details" v-if="currentChapter">
             <div class="detail-item">
               <span class="label">章节标题：</span>
@@ -82,12 +82,12 @@
               </div>
             </div>
           </div>
-          
+
           <div class="reading-actions">
-            <BaseButton 
-              @click="openOriginalUrl" 
-              variant="primary" 
-              size="large"
+            <BaseButton
+              @click="openOriginalUrl"
+              variant="primary"
+              size="medium"
               :disabled="!chapterUrl"
             >
               <ArrowTopRightOnSquareIcon class="w-5 h-5 mr-2" />
@@ -96,26 +96,28 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 底部导航 -->
       <div class="bottom-navigation">
-        <BaseButton 
-          @click="previousChapter" 
+        <BaseButton
+          @click="previousChapter"
           :disabled="!hasPreviousChapter"
-          variant="outline"
+          size="medium"
+          variant="secondary"
         >
           <ChevronLeftIcon class="w-5 h-5 mr-2" />
           上一章
         </BaseButton>
-        
-        <BaseButton @click="goBackToCatalog" variant="ghost">
+
+        <BaseButton @click="goBackToCatalog" size="medium" variant="ghost">
           目录
         </BaseButton>
-        
-        <BaseButton 
-          @click="nextChapter" 
+
+        <BaseButton
+          @click="nextChapter"
           :disabled="!hasNextChapter"
-          variant="outline"
+          variant="secondary"
+          size="medium"
         >
           下一章
           <ChevronRightIcon class="w-5 h-5 ml-2" />
@@ -174,13 +176,17 @@ const chapterUrl = computed(() => {
 
 const hasPreviousChapter = computed(() => currentChapterIndex.value > 0);
 
-const hasNextChapter = computed(() => 
+const hasNextChapter = computed(() =>
   currentChapterIndex.value < totalChapters.value - 1
 );
 
 // 方法
 const goBack = () => {
-  router.go(-1);
+  if (window.history.length > 1) {
+    router.back();
+  } else {
+    router.push({ name: 'Search' });
+  }
 };
 
 const goBackToCatalog = () => {
@@ -195,7 +201,7 @@ const openOriginalUrl = () => {
 
 const copyChapterUrl = async () => {
   if (!chapterUrl.value) return;
-  
+
   try {
     await navigator.clipboard.writeText(chapterUrl.value);
     console.log('章节链接已复制到剪贴板');
@@ -215,14 +221,14 @@ const fallbackCopyTextToClipboard = (text: string) => {
   document.body.appendChild(textArea);
   textArea.focus();
   textArea.select();
-  
+
   try {
     document.execCommand('copy');
     console.log('链接已复制（降级方案）');
   } catch (error) {
     console.error('复制失败:', error);
   }
-  
+
   document.body.removeChild(textArea);
 };
 
@@ -468,26 +474,26 @@ watch(() => route.params.chapterId, (newChapterId) => {
     gap: 1rem;
     text-align: center;
   }
-  
+
   .chapter-info {
     margin: 0;
   }
-  
+
   .chapter-navigation {
     flex-direction: column;
     gap: 1rem;
   }
-  
+
   .bottom-navigation {
     flex-direction: column;
     gap: 1rem;
   }
-  
+
   .detail-item {
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .url-container {
     flex-direction: column;
     align-items: flex-start;
@@ -499,16 +505,16 @@ watch(() => route.params.chapterId, (newChapterId) => {
   .chapter-read-view {
     padding: 0.5rem;
   }
-  
+
   .read-container {
     gap: 1rem;
   }
-  
+
   .read-header,
   .read-content {
     padding: 1rem;
   }
-  
+
   .chapter-title {
     font-size: 1.25rem;
   }

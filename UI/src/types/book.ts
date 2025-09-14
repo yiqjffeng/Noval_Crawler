@@ -71,8 +71,8 @@ export interface SearchHistoryItem {
   resultsCount: number;
 }
 
-// 错误状态
-export interface ErrorState {
+// 书籍错误状态
+export interface BookErrorState {
   hasError: boolean;
   errorMessage: string;
   errorType: 'network' | 'data' | 'not_found' | 'unknown';
