@@ -50,7 +50,7 @@ class ContentSpider(scrapy.Spider):
         self.end_idx = int(end_idx) if end_idx and end_idx != '-1' else -1
         self.task_id = task_id or "default"
         self.total_chapters = 0
-        self.downloaded_chapters = 1
+        self.downloaded_chapters = 0
 
         # 进度文件路径
         self.progress_file = f"{TEMP_OUTPUT_DIRECTORY}/progress_{self.task_id}.json"
@@ -149,8 +149,6 @@ class ContentSpider(scrapy.Spider):
     def _update_progress(self, current, total, status):
         """更新进度到文件"""
         try:
-            # 移除自动创建output目录逻辑
-            # os.makedirs("output", exist_ok=True)
             progress_data = {
                 "task_id": self.task_id,
                 "current": current,

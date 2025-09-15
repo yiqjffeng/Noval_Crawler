@@ -3,7 +3,7 @@ import os
 from urllib.parse import quote
 import scrapy
 
-import book_crawler.config as config   # ✅ 引入整个 config 模块
+import book_crawler.config as config
 
 
 class SearchSpider(scrapy.Spider):
@@ -18,7 +18,7 @@ class SearchSpider(scrapy.Spider):
         # 当前域名索引
         self.current_domain_index = config.SUPPORTED_DOMAINS.index(config.DEFAULT_DOMAIN)
         self.current_domain = config.DEFAULT_DOMAIN
-        config.CURRENT_DOMAIN = self.current_domain   # ✅ 初始化时同步
+        config.CURRENT_DOMAIN = self.current_domain
 
         # 重试控制
         self.retry_count = 0
@@ -84,7 +84,7 @@ class SearchSpider(scrapy.Spider):
             self.retry_count = 0
             self.current_domain_index = (self.current_domain_index + 1) % len(config.SUPPORTED_DOMAINS)
             self.current_domain = config.SUPPORTED_DOMAINS[self.current_domain_index]
-            config.CURRENT_DOMAIN = self.current_domain  # ✅ 更新 config 里的值
+            config.CURRENT_DOMAIN = self.current_domain
             self.logger.info(f"切换到备用域名: {self.current_domain}")
             yield self.make_request()
 
@@ -120,7 +120,7 @@ class SearchSpider(scrapy.Spider):
                 json.dump(data, f, ensure_ascii=False, indent=4)
 
             self.logger.info(f"成功保存搜索结果到 {search_output_file}")
-            self.retry_count = 0  # ✅ 重置当前域名重试次数
+            self.retry_count = 0
 
         except Exception as e:
             self.logger.error(f"保存 JSON 时出错: {e}", exc_info=True)

@@ -49,7 +49,6 @@ def get_supported_domains() -> List[str]:
     url = 'https://www.bqg128.com/js/compc.js'
 
     try:
-        # 添加请求头，模拟浏览器行为
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
@@ -69,19 +68,12 @@ def get_supported_domains() -> List[str]:
 
         # 提取数组字符串
         array_str = match.group(1)
-
-        # 使用json.loads安全解析，而不是eval
-        # 首先将单引号转换为双引号以符合JSON格式
         json_str = array_str.replace("'", '"')
-
-        # 解析JSON
         domain_list = json.loads(json_str)
 
-        # 验证结果是否为列表
         if not isinstance(domain_list, list):
             raise ValueError("解析结果不是列表")
 
-        # 验证列表中的每个元素都是字符串
         for domain in domain_list:
             if not isinstance(domain, str):
                 raise ValueError(f"域名不是字符串: {domain}")

@@ -25,8 +25,7 @@ class CatalogSpider(scrapy.Spider):
         if not self.novel_url:
             self.logger.error("未提供小说URL，爬虫结束")
             return
-        
-        # 构建完整URL
+
         if self.novel_url.startswith('/'):
             full_url = f"https://www.{config.CURRENT_DOMAIN}{self.novel_url}"
         else:
@@ -48,16 +47,14 @@ class CatalogSpider(scrapy.Spider):
             novel_title = response.css(config.CSS_SELECTORS['title']).get()
             if not novel_title:
                 novel_title = response.css(config.CSS_SELECTORS['title_fallback']).get()
-            
-            # 提取作者信息
+
             author_spans = response.css(config.CSS_SELECTORS['author_spans']).getall()
             author = None
             for span_text in author_spans:
                 if '作者：' in span_text:
                     author = span_text.replace('作者：', '').strip()
                     break
-            
-            # 提取章节列表
+
             chapter_links = response.css(config.CSS_SELECTORS['chapter_links'])
             chapters = []
             
@@ -66,7 +63,6 @@ class CatalogSpider(scrapy.Spider):
                 chapter_url = link.css(config.CSS_SELECTORS['chapter_url']).get()
                 
                 if chapter_title and chapter_url:
-                    # 构建完整的章节URL
                     chapters.append({
                         'title': chapter_title.strip(),
                         'url': chapter_url.strip(),
@@ -80,11 +76,8 @@ class CatalogSpider(scrapy.Spider):
                     filtered_chapters.append(chapter)
             
             total_chapters = len(filtered_chapters)
-            
-            # 获取域名
             domain = response.url.split('/')[2]
-            
-            # 创建ChapterItem
+
             chapter_item = ChapterItem()
             chapter_item['novel_id'] = response.meta.get('novel_url', response.url)
             chapter_item['novel_title'] = novel_title or "未知标题"
@@ -136,16 +129,14 @@ class CatalogSpider(scrapy.Spider):
         # 检查完全匹配的无效关键词
         if title in config.INVALID_CHAPTER_KEYWORDS:
             return False
-        
-        # 检查开头匹配的模式
+
         if any(title.startswith(prefix) for prefix in config.INVALID_CHAPTER_PREFIXES):
             return False
         
         # 过滤纯符号或过短的标题
         if len(title) <= 2 and not title.replace('-', '').replace('=', '').replace('*', ''):
             return False
-        
-        # 过滤明显的导航元素（完全匹配）
+
         if title in config.NAVIGATION_KEYWORDS:
             return False
         
