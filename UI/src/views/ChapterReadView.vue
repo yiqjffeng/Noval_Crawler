@@ -5,7 +5,7 @@
       <div class="read-header">
         <div class="header-left">
           <BaseButton @click="goBack" size="medium" variant="ghost">
-            <ArrowLeftIcon class="w-5 h-5 mr-2" />
+            <ArrowLeftIcon />
             返回目录
           </BaseButton>
         </div>
@@ -19,7 +19,7 @@
 
         <div class="header-right">
           <BaseButton @click="openOriginalUrl" variant="primary" size="medium" :disabled="!chapterUrl">
-            <ArrowTopRightOnSquareIcon class="w-5 h-5 mr-2" />
+            <ArrowTopRightOnSquareIcon />
             原网站阅读
           </BaseButton>
         </div>
@@ -33,7 +33,7 @@
           size="medium"
           variant="ghost"
         >
-          <ChevronLeftIcon class="w-5 h-5 mr-2" />
+          <ChevronLeftIcon />
           上一章
         </BaseButton>
 
@@ -49,7 +49,7 @@
           size="medium"
         >
           下一章
-          <ChevronRightIcon class="w-5 h-5 ml-2" />
+          <ChevronRightIcon />
         </BaseButton>
       </div>
 
@@ -76,8 +76,8 @@
               <span class="label">章节链接：</span>
               <div class="url-container">
                 <span class="url-text">{{ chapterUrl }}</span>
-                <BaseButton @click="copyChapterUrl" size="small" variant="ghost">
-                  <ClipboardDocumentIcon class="w-4 h-4" />
+                <BaseButton @click="copyChapterUrl" size="medium" variant="ghost">
+                  <ClipboardDocumentIcon />
                 </BaseButton>
               </div>
             </div>
@@ -90,8 +90,8 @@
               size="medium"
               :disabled="!chapterUrl"
             >
-              <ArrowTopRightOnSquareIcon class="w-5 h-5 mr-2" />
-              前往原网站阅读
+              <ArrowTopRightOnSquareIcon />
+              原网站阅读
             </BaseButton>
           </div>
         </div>
@@ -105,7 +105,7 @@
           size="medium"
           variant="secondary"
         >
-          <ChevronLeftIcon class="w-5 h-5 mr-2" />
+          <ChevronLeftIcon />
           上一章
         </BaseButton>
 
@@ -120,7 +120,7 @@
           size="medium"
         >
           下一章
-          <ChevronRightIcon class="w-5 h-5 ml-2" />
+          <ChevronRightIcon />
         </BaseButton>
       </div>
     </div>
@@ -132,7 +132,6 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useBookStore } from '@/stores';
 import { BaseButton } from '@/components/common';
-import type { Chapter } from '@/types';
 import {
   ArrowLeftIcon,
   ArrowTopRightOnSquareIcon,
@@ -205,10 +204,8 @@ const copyChapterUrl = async () => {
   try {
     await navigator.clipboard.writeText(chapterUrl.value);
     console.log('章节链接已复制到剪贴板');
-    // 这里可以添加成功提示
   } catch (error) {
     console.error('复制链接失败:', error);
-    // 降级方案
     fallbackCopyTextToClipboard(chapterUrl.value);
   }
 };
@@ -260,11 +257,10 @@ const nextChapter = () => {
 
 // 生命周期
 onMounted(async () => {
-  // 如果没有书籍目录数据，尝试加载
   if (!bookCatalog.value) {
     isLoading.value = true;
     try {
-      await bookStore.loadBookCatalog(1); // 简化版本
+      await bookStore.loadBookCatalog(1);
     } catch (err) {
       error.value = '加载章节信息失败';
       console.error('加载目录失败:', err);
@@ -274,13 +270,16 @@ onMounted(async () => {
   }
 });
 
-// 监听路由变化，更新当前章节
 watch(() => route.params.chapterId, (newChapterId) => {
   if (newChapterId) {
-    // 章节切换时的处理逻辑
     console.log(`切换到章节: ${newChapterId}`);
   }
 });
+</script>
+
+<!-- 使用全局 BaseButton 组件 -->
+<script lang="ts">
+// 移除内部 BaseButton 定义，使用全局组件
 </script>
 
 <style scoped>
@@ -298,13 +297,14 @@ watch(() => route.params.chapterId, (newChapterId) => {
   gap: 1.5rem;
 }
 
+
 .read-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: rgba(30, 41, 59, 0.8);
   border-radius: 0.75rem;
-  padding: 1.5rem;
+  padding: 1rem;
   backdrop-filter: blur(8px);
   border: 1px solid rgba(51, 65, 85, 0.5);
 }
@@ -340,7 +340,7 @@ watch(() => route.params.chapterId, (newChapterId) => {
   justify-content: space-between;
   background: rgba(30, 41, 59, 0.5);
   border-radius: 0.5rem;
-  padding: 1rem 1.5rem;
+  padding: 0.75rem 1rem;
   border: 1px solid rgba(51, 65, 85, 0.3);
 }
 
@@ -463,7 +463,7 @@ watch(() => route.params.chapterId, (newChapterId) => {
   justify-content: space-between;
   background: rgba(30, 41, 59, 0.5);
   border-radius: 0.5rem;
-  padding: 1rem 1.5rem;
+  padding: 0.75rem 1rem;
   border: 1px solid rgba(51, 65, 85, 0.3);
 }
 
