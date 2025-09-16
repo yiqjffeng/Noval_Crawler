@@ -1,14 +1,12 @@
 # 📚 小说爬虫项目 (Book Crawler)
 
-一个基于Scrapy的简洁小说爬虫系统，支持多域名自动切换，并提供多种使用方式。
+一个基于Scrapy的简易小说爬虫下载脚本。
 
 ## 🚀 功能特性
 - 小说搜索与目录解析
 - 批量下载与章节选择
 - TXT/EPUB双格式支持
 - 实时下载进度显示
-- 多域名自动轮询
-- 智能反爬策略
 
 ## 📁 项目结构
 
@@ -23,13 +21,13 @@ Book_Crawler/
 ├── UI/                    # Vue3前端界面
 ├── novels/                # 下载的小说文件
 ├── config.py              # 项目基础配置
-├── quick_start.py         # 命令行交互工具
+├── quick_start.py         # 快速开始脚本
 └── requirements.txt       # Python依赖列表
 ```
 
 ## 🛠️ 环境要求
 - Python 3.13+
-- Node.js 16+（如使用Web界面）
+- Node.js 16+（如使用Web可视化界面）
 
 ## 📦 安装步骤
 
@@ -38,10 +36,15 @@ Book_Crawler/
 git clone https://github.com/yiqjffeng/Noval_Crawler.git
 cd Book_Crawler
 ```
+**建议使用虚拟环境**
 
 2. 安装Python依赖
 ```bash
 pip install -r requirements.txt
+```
+或者
+```bash
+uv sync
 ```
 
 3. 安装前端依赖（如使用Web界面）
@@ -97,12 +100,6 @@ RANDOMIZE_DOWNLOAD_DELAY = 1  # 随机延迟
 NOVELS_OUTPUT_DIRECTORY = ./novels/  # 小说输出目录
 ```
 
-## 🛡️ 反爬策略
-- User-Agent轮换
-- 请求间隔随机化
-- 多域名自动切换
-- 并发控制
-
 ## 🐛 常见问题
 
 ### 爬取失败或超时
@@ -118,4 +115,4 @@ NOVELS_OUTPUT_DIRECTORY = ./novels/  # 小说输出目录
 MIT 许可证
 
 ---
-**⭐ 觉得好用请给个Star！**
+**⭐ 如果本项目帮到了您，请给个Star！**

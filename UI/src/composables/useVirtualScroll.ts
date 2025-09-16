@@ -59,7 +59,7 @@ export interface UseVirtualScrollReturn<T> {
   /**
    * 滚动到指定索引
    */
-  scrollToIndex: (index: number) => void;
+  scrollToIndex: (index: number) => { top: number; behavior: string };
   /**
    * 设置数据源
    */
@@ -144,14 +144,13 @@ export function useVirtualScroll<T>(
   /**
    * 滚动到指定索引
    */
-  const scrollToIndex = (index: number): void => {
+  const scrollToIndex = (index: number): { top: number; behavior: string } => {
     const targetIndex = Math.max(0, Math.min(index, items.value.length - 1));
     const targetScrollTop = targetIndex * itemHeight;
 
     // 使用 Element.scrollTo 进行滚动
     const scrollBehavior = smoothScroll ? 'smooth' : 'auto';
     
-    // 需要在组件中调用时传入实际的容器元素
     if (enableLogs) {
       console.log(`虚拟滚动: 跳转到索引 ${targetIndex}, 滚动位置 ${targetScrollTop}`);
     }

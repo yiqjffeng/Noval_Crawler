@@ -25,7 +25,7 @@ export function useLoading(initialState: boolean = false) {
   const error = ref('')
 
   const startTime = ref(0)
-  const minDurationTimer = ref<NodeJS.Timeout | null>(null)
+  const minDurationTimer = ref<number | null>(null)
 
   const isLoading = computed(() => loading.value)
   const loadingText = computed(() => text.value)
@@ -47,7 +47,7 @@ export function useLoading(initialState: boolean = false) {
 
     // 设置最小持续时间
     if (options.minDuration) {
-      minDurationTimer.value = setTimeout(() => {
+      minDurationTimer.value = window.setTimeout(() => {
         minDurationTimer.value = null
       }, options.minDuration)
     }
@@ -168,6 +168,8 @@ export const createGlobalLoading = () => {
   })
 
   const activeRequests = ref(0)
+  let timer: number | null = null
+  let debounceTimer: number | null = null
 
   const start = (options: Partial<LoadingState> = {}) => {
     activeRequests.value++
@@ -206,13 +208,13 @@ export const createGlobalLoading = () => {
 export function useDelayedLoading(delay: number = 300) {
   const { loading, ...rest } = useLoading()
   const delayedLoading = ref(false)
-  let timer: NodeJS.Timeout | null = null
+  let timer: number | null = null
 
   const updateDelayedLoading = () => {
     if (timer) clearTimeout(timer)
     
     if (loading.value) {
-      timer = setTimeout(() => {
+      timer = window.setTimeout(() => {
         delayedLoading.value = true
       }, delay)
     } else {
@@ -232,6 +234,34 @@ export function useDelayedLoading(delay: number = 300) {
   }
 }
 
+// 防抖加载Hook
+export function useDebouncedLoading(debounceMs: number = 300) {
+  const { loading, ...rest } = useLoading()
+  let debounceTimer: number | null = null
+
+  const debouncedStart = (options: Parameters<typeof rest.start>[0] = {}) => {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = window.setTimeout(() => {
+      rest.start(options)
+    }, debounceMs)
+  }
+
+  const debouncedStop = () => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+      debounceTimer = null
+    }
+    rest.stop()
+  }
+
+  return {
+    loading,
+    ...rest,
+    start: debouncedStart,
+    stop: debouncedStop
+  }
+}
+
 // 分页加载Hook
 export function usePaginatedLoading<T>() {
   const items = ref<T[]>([])
@@ -246,7 +276,9 @@ export function usePaginatedLoading<T>() {
 
     await loading.withLoading(async () => {
       const result = await fetchFn(page.value)
-      items.value.push(...result.items)
+      const currentItems = items.value as T[]
+      const newItems = result.items as T[]
+      items.value = [...currentItems, ...newItems]
       hasMore.value = result.hasMore
       if (result.hasMore) page.value++
     })
@@ -265,33 +297,5 @@ export function usePaginatedLoading<T>() {
     page,
     loadMore,
     reset
-  }
-}
-
-// 防抖加载Hook
-export function useDebouncedLoading(debounceMs: number = 300) {
-  const { loading, ...rest } = useLoading()
-  let debounceTimer: NodeJS.Timeout | null = null
-
-  const debouncedStart = (options: Parameters<typeof rest.start>[0] = {}) => {
-    if (debounceTimer) clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(() => {
-      rest.start(options)
-    }, debounceMs)
-  }
-
-  const debouncedStop = () => {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer)
-      debounceTimer = null
-    }
-    rest.stop()
-  }
-
-  return {
-    loading,
-    ...rest,
-    start: debouncedStart,
-    stop: debouncedStop
   }
 }
